@@ -1,0 +1,25 @@
+#RStudio files
+.Rproj.user/
+
+#History files
+.Rhistory
+.Rapp.history
+
+#Session Data files
+.RData
+.Ruserdata
+
+#OAuth2 token 
+.httr-oauth
+.Rproj.user
+
+#folders ...
+
+#figures & output (excludes all figure files)
+*.png
+*.pdf
+*.jpeg
+
+#others
+.DS_Store
+.quarto
