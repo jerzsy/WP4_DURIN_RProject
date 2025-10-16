@@ -1,5 +1,5 @@
 #RStudio files
-.Rproj.user/
+.Rproj.user
 
 #History files
 .Rhistory
@@ -8,6 +8,7 @@
 #Session Data files
 .RData
 .Ruserdata
+.Rdata
 
 #OAuth2 token 
 .httr-oauth
