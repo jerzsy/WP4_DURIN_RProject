@@ -1,5 +1,5 @@
 #RStudio files
-.Rproj.user
+.Rproj.user/
 
 #History files
 .Rhistory
@@ -15,6 +15,11 @@
 .Rproj.user
 
 #folders ...
+*.csv
+*.xls
+*.xlsx
+*.txt
+Excel_to_csv.R
 
 #figures & output (excludes all figure files)
 *.png
