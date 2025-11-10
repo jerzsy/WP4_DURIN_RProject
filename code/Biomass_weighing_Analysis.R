@@ -3,8 +3,6 @@
 ######################################################
 # --- Biomass weighing measurements ---- #
 
-# Quick instructions: data files need to be in a "data" folder, in the same folder as the R script. 
-
 # Install and load packages
 packages <- c("tidyverse") #add any other packages that you may need to this list
 new_packages <- packages[!(packages %in% installed.packages()[,"Package"])]
@@ -18,7 +16,7 @@ setwd(wd)
 
 # File specifications
 ## Path to the csv file #Check that it matches what you downloaded!
-file_path <- "data/DURIN_WP_4_raw_4Corners_lab_biomass_weighing_dwarf_shrubs_2025.csv" #As you can see, I exported it as a csv file. You may want to work with Excel if you prefer. That would change some lines in the script.
+file_path <- "../raw_data/DURIN_WP_4_raw_4Corners_lab_biomass_weighing_dwarf_shrubs_2025.csv" #As you can see, I exported it as a csv file. You may want to work with Excel if you prefer. That would change some lines in the script.
 ## Define column names
 col_names <- c('recorder_sep','date_sep','time_begin_sep','time_end_sep','site_name','siteID','habitat','PlotID','IndividualID','SpeciesID','Bag_code','IN_OUT_parts','brown_stems_in','brown_stems_out',
                'sep_status','dried_status','recorder_weighing','date_weighing','weighed_status','biomass_brown_stem_in_1','biomass_brown_stem_in_2','biomass_brown_stem_in_3','biomass_brown_stem_out',
