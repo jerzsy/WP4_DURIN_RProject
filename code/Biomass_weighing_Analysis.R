@@ -13,7 +13,7 @@ if(length(new_packages)) install.packages(new_packages)
 lapply(packages, library, character.only = TRUE)
 
 # Set working directory
-wd <- '/Users/jeannerezsohazy/OneDrive - University of Bergen/BIO299/Biomass_project/Biomass_scripts'#getwd()
+wd <- getwd()
 setwd(wd)
 
 # File specifications
