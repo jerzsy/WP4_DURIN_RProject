@@ -43,10 +43,12 @@ col_spec <- cols(
   dried_status = col_integer(),
   recorder_weighing = col_character(),
   date_weighing = col_date(format = ""),
+  date_weighing_2 = col_date(format = ""),
   weighed_status = col_integer(),
   biomass_brown_stem_in_1 = col_double(),
   biomass_brown_stem_in_2 = col_double(),
   biomass_brown_stem_in_3 = col_double(),
+  biomass_brown_stem_in_4 = col_double(),
   biomass_brown_stem_out = col_double(),
   biomass_green_stem_in_1 = col_double(),
   biomass_green_stem_in_2 = col_double(),
@@ -60,11 +62,14 @@ col_spec <- cols(
   biomass_alive_leaves_in_6 = col_double(),
   biomass_alive_leaves_out = col_double(),
   biomass_dead_leaves_in = col_double(),
+  biomass_maybe_dead_leaves_in = col_double(),
   biomass_dead_leaves_out = col_double(),
+  biomass_maybe_dead_leaves_out = col_double(),
   biomass_berries_in = col_double(),
   biomass_berries_out = col_double(),
   comment_sep = col_character(),
-  comment_weighing = col_character()
+  comment_weighing = col_character(),
+  comment_after = col_character()
 )
 
 # Read the file into a tibble
@@ -77,7 +82,7 @@ biomass_raw <- read_csv(file_path, col_types = col_spec) #I exported the file as
 ####################################################################################
 ###################### MANDATORY DATA PROCESSING STEPS #############################
 ####################################################################################
-# Calculate sum of all parts inside the bag (value 1, value 2, value 3, etc)
+# Calculate sum of all parts inside the bag (value 1, value 2, value 3, etc) #To update if more
 biomass_raw <- biomass_raw %>%
   mutate(
     biomass_brown_stem_in = if_else(
@@ -124,6 +129,11 @@ biomass_raw <- biomass_raw %>%
       NA,
       rowSums(cbind(biomass_dead_leaves_in, biomass_dead_leaves_out), na.rm = TRUE)
     ),
+    biomass_maybe_dead_leaves_total = ifelse(
+      is.na(biomass_maybe_dead_leaves_in) & is.na(biomass_maybe_dead_leaves_out),
+      NA,
+      rowSums(cbind(biomass_maybe_dead_leaves_in, biomass_maybe_dead_leaves_out), na.rm = TRUE)
+    ),
     biomass_berries_total = ifelse(
       is.na(biomass_berries_in) & is.na(biomass_berries_out),
       NA,
@@ -133,7 +143,7 @@ biomass_raw <- biomass_raw %>%
 
 #Move columns before comments
 biomass_raw <- biomass_raw %>%
-  select(-comment_sep, -comment_weighing, everything(), comment_sep, comment_weighing)
+  select(-comment_sep, -comment_weighing, -comment_after, everything(), comment_sep, comment_weighing, comment_after)
 
 #####################################################################################
 
@@ -192,4 +202,138 @@ biomass_vv_weighed %>%
     y = "Stem Biomass (g)"
   ) +
   theme_minimal()
+
+## Boxplot of ratio between leaves and stem, by site and habitat - individuals only
+biomass_vv_weighed %>%
+  filter(IndividualID %in% c("VV_1", "VV_2", "VV_3")) %>% # only individuals VV_1, VV_2 and VV_3
+  mutate(leaf_stem_ratio = biomass_alive_leaves_total / biomass_brown_stem_total) %>%
+  ggplot(aes(x = siteID, y = leaf_stem_ratio, fill = habitat)) +
+  geom_boxplot() +
+  labs(
+    title = "Leaf to Stem Biomass Ratio for Vaccinium vitis-idaea by Site and Habitat",
+    x = "Site",
+    y = "Leaf to Stem Biomass Ratio"
+  ) +
+  theme_minimal()
+
+##Means and confidence interval
+###Checking normality? 
+###Leaves
+biomass_vv_weighed %>%
+  filter(IndividualID %in% c("VV_1","VV_2","VV_3")) %>%
+  ggplot(aes(sample = biomass_alive_leaves_total)) +
+  stat_qq() +
+  stat_qq_line() +
+  facet_grid(siteID ~ habitat) +
+  theme_minimal()
+
+###Stems
+biomass_vv_weighed %>%
+  filter(IndividualID %in% c("VV_1","VV_2","VV_3")) %>%
+  ggplot(aes(sample = biomass_brown_stem_total)) +
+  stat_qq() +
+  stat_qq_line() +
+  facet_grid(siteID ~ habitat) +
+  theme_minimal()
+
+###CI
+###Leaves
+biomass_vv_weighed %>%
+  filter(IndividualID %in% c("VV_1", "VV_2", "VV_3")) %>%
+  group_by(siteID, habitat) %>%
+  summarise(
+    n = n(),
+    mean = mean(biomass_alive_leaves_total),
+    sd = sd(biomass_alive_leaves_total),
+    se = sd / sqrt(n),
+    ci_low  = mean - 1.96 * se,
+    ci_high = mean + 1.96 * se
+  ) %>%
+  mutate(
+    summary_text = sprintf(
+      "%s - %s: Mean = %.2f, 95%% CI = [%.2f, %.2f], n = %d",
+      siteID, habitat, mean, ci_low, ci_high, n
+    )
+  ) %>%
+  pull(summary_text) %>% 
+  cat(sep = "\n")
+
+
+stats <- biomass_vv_weighed %>%
+  filter(IndividualID %in% c("VV_1", "VV_2", "VV_3")) %>%
+  group_by(siteID, habitat) %>%
+  summarise(
+    n = n(),
+    mean = mean(biomass_alive_leaves_total),
+    sd = sd(biomass_alive_leaves_total),
+    se = sd / sqrt(n),
+    ci_low  = mean - 1.96 * se,
+    ci_high = mean + 1.96 * se,
+    .groups = "drop"
+  )
+print(stats)
+
+###Stems
+biomass_vv_weighed %>%
+  filter(IndividualID %in% c("VV_1", "VV_2", "VV_3")) %>%
+  group_by(siteID, habitat) %>%
+  summarise(
+    n = n(),
+    mean = mean(biomass_brown_stem_total),
+    sd = sd(biomass_brown_stem_total),
+    se = sd / sqrt(n),
+    ci_low  = mean - 1.96 * se,
+    ci_high = mean + 1.96 * se
+  ) %>%
+  mutate(
+    summary_text = sprintf(
+      "%s - %s: Mean = %.2f, 95%% CI = [%.2f, %.2f], n = %d",
+      siteID, habitat, mean, ci_low, ci_high, n
+    )
+  ) %>%
+  pull(summary_text) %>% 
+  cat(sep = "\n")
+
+### Ratio
+biomass_vv_weighed %>%
+  filter(IndividualID %in% c("VV_1", "VV_2", "VV_3")) %>%
+  mutate(leaf_stem_ratio = biomass_alive_leaves_total / biomass_brown_stem_total) %>%
+  group_by(siteID, habitat) %>%
+  summarise(
+    n = n(),
+    mean = mean(leaf_stem_ratio),
+    sd = sd(leaf_stem_ratio),
+    se = sd / sqrt(n),
+    ci_low  = mean - 1.96 * se,
+    ci_high = mean + 1.96 * se
+  ) %>%
+  mutate(
+    summary_text = sprintf(
+      "%s - %s: Mean = %.2f, 95%% CI = [%.2f, %.2f], n = %d",
+      siteID, habitat, mean, ci_low, ci_high, n
+    )
+  ) %>%
+  pull(summary_text) %>% 
+  cat(sep = "\n")
+
+### Student test
+
+stats <- biomass_vv_weighed %>%
+  filter(IndividualID %in% c("VV_1", "VV_2", "VV_3")) %>%
+  group_by(siteID, habitat) %>%
+  summarise(
+    n = n(),
+    mean = mean(biomass_alive_leaves_total, na.rm = TRUE),
+    sd = sd(biomass_alive_leaves_total, na.rm = TRUE),
+    se = sd / sqrt(n),
+    # 95% CI using t-distribution
+    ci_low  = mean - qt(0.975, df = n-1) * se,
+    ci_high = mean + qt(0.975, df = n-1) * se,
+    .groups = "drop"
+  )
+
+print(stats)
+
+
+
 
