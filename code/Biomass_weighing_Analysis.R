@@ -294,6 +294,21 @@ biomass_vv_weighed %>%
   pull(summary_text) %>% 
   cat(sep = "\n")
 
+
+stats <- biomass_vv_weighed %>%
+  filter(IndividualID %in% c("VV_1", "VV_2", "VV_3")) %>%
+  group_by(siteID, habitat) %>%
+  summarise(
+    n = n(),
+    mean = mean(biomass_brown_stem_total),
+    sd = sd(biomass_brown_stem_total),
+    se = sd / sqrt(n),
+    ci_low  = mean - 1.96 * se,
+    ci_high = mean + 1.96 * se,
+    .groups = "drop"
+  )
+print(stats)
+
 ### Ratio
 biomass_vv_weighed %>%
   filter(IndividualID %in% c("VV_1", "VV_2", "VV_3")) %>%
