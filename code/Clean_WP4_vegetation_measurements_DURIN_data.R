@@ -77,7 +77,17 @@ vegetation_data_stack <- vegetation_data_stack %>%
       TRUE ~ site_name
     )
   )
-  
+
+###Site ID
+vegetation_data_stack <- vegetation_data_stack %>%
+  mutate(
+    siteID = case_when(
+      siteID %in% c("SE","SENJA","Senja","senja","se","Se") ~ "SE",
+      siteID %in% c("KA","KAUTOKEINO","Kautokeino","kautokeino","KAUTOKINO","ka","Ka") ~ "KA",
+      TRUE ~ siteID
+    )
+  )
+
 ### Habitat
 vegetation_data_stack <- vegetation_data_stack %>%
   mutate(
