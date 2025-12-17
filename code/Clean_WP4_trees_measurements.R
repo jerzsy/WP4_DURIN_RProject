@@ -57,10 +57,39 @@ raw_df <- read_csv(file_path, col_types = col_spec, na = c("NA",""))
 # Quick check
 str(raw_df)
 
-## Site names
-sites_name <- c("SENJA","KAUTOKEINO")#"LYGRA","SOGNDAL","SENJA","KAUTOKEINO") #South not entered yet
+#-------------------------------------------#
 
 # 1. Clean the data
+
+## Check for typos
+# Site names
+raw_df <- raw_df %>%
+  mutate(
+    site_name = case_when(
+      site_name %in% c("SENJA","Senja","senja") ~ "Senja",
+      site_name %in% c("KAUTOKEINO","Kautokeino","kautokeino","KAUTOKINO") ~ "Kautokeino",
+      TRUE ~ site_name
+    )
+  )
+#Site ID
+raw_df <- raw_df %>%
+  mutate(
+    siteID = case_when(
+      siteID %in% c("SE","SENJA","Senja","senja","se","Se") ~ "SE",
+      siteID %in% c("KA","KAUTOKEINO","Kautokeino","kautokeino","KAUTOKINO","ka","Ka") ~ "KA",
+      TRUE ~ siteID
+    )
+  )
+# Tree position
+raw_df <- raw_df %>%
+  mutate(
+    tree_position = case_when(
+      tree_position %in% c("up","uphill","Uphill","UPHILL","Up","UP") ~ "up",
+      tree_position %in% c("down","downhill","Downhill","DOWNHILL","Down","DOWN","DWON","dwon","donw") ~ "down",
+      tree_position %in% c("same","Same","SAME","at same level","At same level","AT SAME LEVEL") ~ "same",
+      TRUE ~ tree_position
+    )
+  )
 
 ## Make flags and put them in a dedicated 'flags' column
 
@@ -169,6 +198,8 @@ clean_df <- clean_df %>%
   )
 
 
+#-----------------------------------------------#
+
 # 2. Add columns with heights of tree based on angle measurements
 
 #--------------------------------------------------------------#
@@ -248,7 +279,15 @@ clean_df <- clean_df %>%
   ungroup()
 
 ## Check on height in meters?
+###Print warning on negative heights?
+negative_heights <- clean_df %>%
+  filter(height_top < 0 | height_bottom < 0)
+if (nrow(negative_heights) > 0) {
+  print("Warning! Some calculated heights are negative! Check measurements!")
+  print(negative_heights %>% select(plotID, plant_nr, height_top, height_bottom))
+}
 
+#-----------------------------------------------#
 # 3. Rearrange dataset
 ## Select and order columns
 final_df <- clean_df %>%
@@ -267,12 +306,23 @@ final_df <- clean_df %>%
          flags,
          comments)
 
+#-------------------------------------------------------------#
 # 4. Export cleaned dataset
-# Export as CSV
-write_csv(final_df, "clean_data/DURIN_WP4_cleaned_4Corners_field_traits_trees_2025.csv")
+## Change flag column into something readable in Excel
+final_df_export_csv <- final_df
+final_df_export_csv$flags <- vapply(
+  final_df_export_csv$flags,
+  function(x) paste(sort(unique(x)), collapse = "|"),
+  character(1)
+)
 
+## Export in CSV
+write.csv(final_df_export_csv, "clean_data/DURIN_WP4_clean_4Corners_field_traits_trees_2025.csv", row.names = FALSE)
 
-# Quick plot to check height_top vs height_top_eye and height_bottom vs height_bottom_eye
+#------------------------------------------------------#
+# 5. Quick plots 
+
+## Quick plot to check height_top vs height_top_eye and height_bottom vs height_bottom_eye
 ggplot(final_df, aes(x = height_top, y = height_top_eye)) +
   geom_point() +
   geom_abline(slope = 1, intercept = 0, color = "red") +
@@ -289,7 +339,7 @@ ggplot(final_df, aes(x = height_bottom, y = height_bottom_eye)) +
        y = "Height Bottom from Eye Height (m)") +
   theme_minimal()
 
-# Quick plot of difference between height_top and height_top_eye and height_bottom and height_bottom_eye
+## Quick plot of difference between height_top and height_top_eye and height_bottom and height_bottom_eye
 final_df <- final_df %>%
   mutate(
     diff_height_top = height_top - height_top_eye,
@@ -308,7 +358,7 @@ ggplot(final_df, aes(x = diff_height_bottom)) +
        y = "Frequency") +
   theme_minimal()
 
-# Quick plot of difference as a function of height_top and height_bottom
+## Quick plot of difference as a function of height_top and height_bottom
 ggplot(final_df, aes(x = height_top, y = diff_height_top)) +
   geom_point() +
   labs(title = "Difference in Height Top vs Angles Height Top",
