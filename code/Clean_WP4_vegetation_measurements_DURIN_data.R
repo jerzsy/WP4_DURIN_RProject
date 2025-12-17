@@ -54,8 +54,6 @@ col_spec <- cols(
   comments_2 = col_character()
 )
 
-#column_names <- c("year","date","date_2","site_name","siteID","habitat","plotID","recorder","weather","species","speciesID","plant_nr","control_top_height","control_bottom_height","control_stem_length","control_stem_diameter","comments_1","removal_top_height","removal_bottom_height","removal_stem_length","removal_stem_diameter","comments_2")
-
 # Read the files into a named list of tibbles 
 vegetation_data_list <- file_paths %>%
   map(~ read_csv(.x,col_types= col_spec)) #reads each CSV
@@ -67,10 +65,47 @@ str(vegetation_data_list)   # shows a list of tibbles, each named by site
 vegetation_data_stack <- bind_rows(vegetation_data_list)#, .id = "site_name")
 
 # Data cleaning
+## 1. Check for typos
+### Site names
+vegetation_data_stack <- vegetation_data_stack %>%
+  mutate(
+    site_name = case_when(
+      site_name %in% c("SENJA","Senja","senja") ~ "Senja",
+      site_name %in% c("KAUTOKEINO","Kautokeino","kautokeino","KAUTOKINO") ~ "Kautokeino",
+      site_name %in% c("LYGRA","Lygra","lygra","Lygr") ~ "Lygra",
+      site_name %in% c("SOGNDAL","Sogndal","sogndal","Songdal") ~ "Sogndal",
+      TRUE ~ site_name
+    )
+  )
+  
+### Habitat
+vegetation_data_stack <- vegetation_data_stack %>%
+  mutate(
+    habitat = case_when(
+      habitat %in% c("Open","open","OPen","opne") ~ "Open",
+      habitat %in% c("Forested","forested","FORESTED","forested") ~ "Forested",
+      TRUE ~ habitat
+    )
+  )
 
-## 1. Add columns with flag for removal and control plots
+### SpeciesID
+vegetation_data_stack <- vegetation_data_stack %>%
+  mutate(
+    speciesID = case_when(
+      speciesID %in% c("EN","en","En") ~ "EN",
+      speciesID %in% c("VV","vv","Vv") ~ "VV",
+      speciesID %in% c("CV","cv","Cv") ~ "CV",
+      speciesID %in% c("VM","vm","Vm") ~ "VM",
+      speciesID %in% c("G","g") ~ "G",
+      speciesID %in% c("F","f") ~ "F",
+      TRUE ~ speciesID
+    )
+  )
+
+
+## 2. Add columns with flags for removal and control plots
 #-------------------------------------------------------------------#
-### Flag function for automatic check on measurements! ###
+### flag function for automatic check on measurements! ###
 make_flags <- function(top, bottom, stem_len, stem_diam, species) {
   
   flags <- c(
@@ -129,7 +164,7 @@ make_flags <- function(top, bottom, stem_len, stem_diam, species) {
 ### Apply the flagging function to control and removal data
 vegetation_data_clean <- vegetation_data_stack %>%
   mutate(
-    flag_control = pmap(
+    control_flags = pmap(
       list(control_top_height,
            control_bottom_height,
            control_stem_length,
@@ -137,7 +172,7 @@ vegetation_data_clean <- vegetation_data_stack %>%
            speciesID),
       make_flags
     ),
-    flag_removal = pmap(
+    removal_flags = pmap(
       list(removal_top_height,
            removal_bottom_height,
            removal_stem_length,
@@ -149,7 +184,7 @@ vegetation_data_clean <- vegetation_data_stack %>%
 
 ### Adding some warnings on data manually in the flag column
 
-#### Configuration of replicates - canopy, root out? ####
+#### Configuration of replicates - canopy or root out? ####
 
             #### -- Control plots -- ####
 
@@ -157,134 +192,134 @@ vegetation_data_clean <- vegetation_data_stack %>%
 vegetation_data_clean <- vegetation_data_clean %>%
   rowwise() %>%
   mutate(
-    flag_control = case_when(
+    control_flags = case_when(
       plotID == "LY_O_CV_2" & speciesID == "CV" & plant_nr == 2 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "LY_F_EN_2" & speciesID == "EN" & plant_nr == 3 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "LY_F_CV_2" & speciesID == "VM" & plant_nr == 3 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "LY_F_VM_1" & speciesID == "VM" & plant_nr == 1 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "LY_F_VM_3" & speciesID == "VM" & plant_nr == 1 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "SO_O_EN_1" & speciesID == "CV" & plant_nr == 3 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "SO_O_EN_2" & speciesID == "EN" & plant_nr == 2 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "SO_O_EN_3" & speciesID == "VM" & plant_nr == 1 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "SO_O_EN_5" & speciesID == "EN" & plant_nr == 1 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "SO_O_CV_1" & speciesID == "EN" & plant_nr == 3 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "SO_O_CV_2" & speciesID == "CV" & plant_nr == 2 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "SO_O_CV_3" & speciesID == "EN" & plant_nr == 1 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "SO_O_CV_3" & speciesID == "CV" & plant_nr == 1 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "SO_O_CV_4" & speciesID == "EN" & plant_nr == 3 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "SO_O_VM_1" & speciesID == "EN" & plant_nr == 1 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "SO_O_VM_1" & speciesID == "EN" & plant_nr == 2 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "SO_O_VM_3" & speciesID == "EN" & plant_nr == 1 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "SO_O_VM_4" & speciesID == "EN" & plant_nr == 3 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "SO_O_VV_1" & speciesID == "CV" & plant_nr == 1 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "SO_F_EN_1" & speciesID == "EN" & plant_nr == 2 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "SO_F_EN_2" & speciesID == "EN" & plant_nr == 1 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "SO_F_EN_2" & speciesID == "EN" & plant_nr == 2 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "SO_F_EN_2" & speciesID == "EN" & plant_nr == 3 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "SO_F_EN_2" & speciesID == "CV" & plant_nr == 1 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "SO_F_CV_3" & speciesID == "CV" & plant_nr == 2 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "SO_F_CV_5" & speciesID == "CV" & plant_nr == 1 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "SO_F_VV_2" & speciesID == "EN" & plant_nr == 1 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "SO_F_VV_5" & speciesID == "EN" & plant_nr == 2 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "SO_F_VV_5" & speciesID == "EN" & plant_nr == 3 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "SE_O_EN_1" & speciesID == "EN" & plant_nr == 1 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "SE_O_EN_2" & speciesID == "VM" & plant_nr == 2 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "SE_O_CV_4" & speciesID == "EN" & plant_nr == 3 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "SE_O_VM_5" & speciesID == "VV" & plant_nr == 1 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "SE_O_VV_5" & speciesID == "VV" & plant_nr == 1 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "SE_F_EN_5" & speciesID == "VM" & plant_nr == 2 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "SE_F_CV_1" & speciesID == "EN" & plant_nr == 1 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "SE_F_CV_2" & speciesID == "VM" & plant_nr == 3 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "SE_F_VM_5" & speciesID == "EN" & plant_nr == 1 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "KA_O_EN_4" & speciesID == "EN" & plant_nr == 1 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "KA_O_EN_4" & speciesID == "EN" & plant_nr == 2 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "KA_O_EN_4" & speciesID == "EN" & plant_nr == 3 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
       plotID == "KA_O_VV_2" & speciesID == "EN" & plant_nr == 3 ~ 
-        list(c(flag_control, "root_out")),
+        list(c(control_flags, "root_out")),
       
-      TRUE ~ list(flag_control)
+      TRUE ~ list(control_flags)
     )
   ) %>%
   ungroup()
@@ -293,42 +328,42 @@ vegetation_data_clean <- vegetation_data_clean %>%
 vegetation_data_clean <- vegetation_data_clean %>%
   rowwise() %>%
   mutate(
-    flag_control = case_when(
+    control_flags = case_when(
       plotID == "SO_O_CV_4" & speciesID == "EN" & plant_nr == 2 ~ 
-        list(c(flag_control, "canopy_out")),
+        list(c(control_flags, "canopy_out")),
       
       plotID == "SO_F_VM_4" & speciesID == "G" & plant_nr == 1 ~ 
-        list(c(flag_control, "canopy_out")),
+        list(c(control_flags, "canopy_out")),
       
       plotID == "SO_F_VM_4" & speciesID == "G" & plant_nr == 2 ~ 
-        list(c(flag_control, "canopy_out")),
+        list(c(control_flags, "canopy_out")),
       
       plotID == "SO_F_VM_4" & speciesID == "G" & plant_nr == 3 ~ 
-        list(c(flag_control, "canopy_out")),
+        list(c(control_flags, "canopy_out")),
       
       plotID == "SE_F_EN_2" & speciesID == "EN" & plant_nr == 3 ~ 
-        list(c(flag_control, "canopy_out")),
+        list(c(control_flags, "canopy_out")),
       
-      TRUE ~ list(flag_control)
+      TRUE ~ list(control_flags)
     )
   ) %>%
   ungroup()
 
-##### Canopy out; root out
+##### Canopy out and root out
 vegetation_data_clean <- vegetation_data_clean %>%
   rowwise() %>%
   mutate(
-    flag_control = case_when(
+    control_flags = case_when(
       plotID == "LY_F_CV_2" & speciesID == "CV" & plant_nr == 2 ~ 
-        list(c(flag_control, "canopy_root_out")),
+        list(c(control_flags, "canopy_root_out")),
       
       plotID == "SO_F_CV_4" & speciesID == "CV" & plant_nr == 2 ~ 
-        list(c(flag_control, "canopy_root_out")),
+        list(c(control_flags, "canopy_root_out")),
       
       plotID == "SO_F_CV_4" & speciesID == "CV" & plant_nr == 3 ~ 
-        list(c(flag_control, "canopy_root_out")),
+        list(c(control_flags, "canopy_root_out")),
       
-      TRUE ~ list(flag_control)
+      TRUE ~ list(control_flags)
     )
   ) %>%
   ungroup()
@@ -340,50 +375,50 @@ vegetation_data_clean <- vegetation_data_clean %>%
 vegetation_data_clean <- vegetation_data_clean %>%
   rowwise() %>%
   mutate(
-    flag_removal = case_when(
+    removal_flags = case_when(
       plotID == "LY_F_CV_1" & speciesID == "CV" & plant_nr == 3 ~ 
-        list(c(flag_removal, "root_out")),
+        list(c(removal_flags, "root_out")),
       
       plotID == "LY_F_CV_3" & speciesID == "CV" & plant_nr == 2 ~ 
-        list(c(flag_removal, "root_out")),
+        list(c(removal_flags, "root_out")),
       
       plotID == "LY_F_VM_5" & speciesID == "VM" & plant_nr == 2 ~ 
-        list(c(flag_removal, "root_out")),
+        list(c(removal_flags, "root_out")),
       
       plotID == "SO_O_CV_1" & speciesID == "CV" & plant_nr == 3 ~ 
-        list(c(flag_removal, "root_out")),
+        list(c(removal_flags, "root_out")),
       
       plotID == "SO_O_CV_2" & speciesID == "CV" & plant_nr == 3 ~ 
-        list(c(flag_removal, "root_out")),
+        list(c(removal_flags, "root_out")),
       
       plotID == "SO_O_CV_4" & speciesID == "CV" & plant_nr == 3 ~ 
-        list(c(flag_removal, "root_out")),
+        list(c(removal_flags, "root_out")),
       
       plotID == "SO_F_EN_4" & speciesID == "EN" & plant_nr == 3 ~ 
-        list(c(flag_removal, "root_out")),
+        list(c(removal_flags, "root_out")),
       
       plotID == "SE_O_CV_1" & speciesID == "CV" & plant_nr == 1 ~ 
-        list(c(flag_removal, "root_out")),
+        list(c(removal_flags, "root_out")),
       
       plotID == "SE_F_EN_2" & speciesID == "EN" & plant_nr == 3 ~ 
-        list(c(flag_removal, "root_out")),
+        list(c(removal_flags, "root_out")),
       
       plotID == "SE_F_EN_3" & speciesID == "EN" & plant_nr == 2 ~ 
-        list(c(flag_removal, "root_out")),
+        list(c(removal_flags, "root_out")),
       
       plotID == "SE_F_CV_1" & speciesID == "CV" & plant_nr == 1 ~ 
-        list(c(flag_removal, "root_out")),
+        list(c(removal_flags, "root_out")),
       
       plotID == "SE_F_CV_2" & speciesID == "CV" & plant_nr == 2 ~ 
-        list(c(flag_removal, "root_out")),
+        list(c(removal_flags, "root_out")),
       
       plotID == "KA_O_EN_4" & speciesID == "EN" & plant_nr == 1 ~ 
-        list(c(flag_removal, "root_out")),
+        list(c(removal_flags, "root_out")),
       
       plotID == "KA_F_EN_4" & speciesID == "EN" & plant_nr == 1 ~ 
-        list(c(flag_removal, "root_out")),
+        list(c(removal_flags, "root_out")),
       
-      TRUE ~ list(flag_removal)
+      TRUE ~ list(removal_flags)
     )
   ) %>%
   ungroup()
@@ -392,190 +427,195 @@ vegetation_data_clean <- vegetation_data_clean %>%
 vegetation_data_clean <- vegetation_data_clean %>%
   rowwise() %>%
   mutate(
-    flag_removal = case_when(
+    removal_flags = case_when(
       plotID == "LY_F_CV_1" & speciesID == "CV" & plant_nr == 1 ~ 
-        list(c(flag_removal, "canopy_out")),
+        list(c(removal_flags, "canopy_out")),
       
       plotID == "LY_F_CV_2" & speciesID == "CV" & plant_nr == 1 ~ 
-        list(c(flag_removal, "canopy_out")),
+        list(c(removal_flags, "canopy_out")),
       
       plotID == "LY_F_CV_2" & speciesID == "CV" & plant_nr == 2 ~ 
-        list(c(flag_removal, "canopy_out")),
+        list(c(removal_flags, "canopy_out")),
       
       plotID == "LY_F_CV_5" & speciesID == "CV" & plant_nr == 2 ~ 
-        list(c(flag_removal, "canopy_out")),
+        list(c(removal_flags, "canopy_out")),
       
       plotID == "SO_O_EN_2" & speciesID == "EN" & plant_nr == 1 ~ 
-        list(c(flag_removal, "canopy_out")),
+        list(c(removal_flags, "canopy_out")),
       
       plotID == "SO_O_EN_2" & speciesID == "EN" & plant_nr == 2 ~ 
-        list(c(flag_removal, "canopy_out")),
+        list(c(removal_flags, "canopy_out")),
       
       plotID == "SO_O_EN_2" & speciesID == "EN" & plant_nr == 3 ~ 
-        list(c(flag_removal, "canopy_out")),
+        list(c(removal_flags, "canopy_out")),
       
       plotID == "SO_O_CV_2" & speciesID == "CV" & plant_nr == 1 ~ 
-        list(c(flag_removal, "canopy_out")),
+        list(c(removal_flags, "canopy_out")),
       
       plotID == "SE_O_CV_1" & speciesID == "CV" & plant_nr == 3 ~ 
-        list(c(flag_removal, "canopy_out")),
+        list(c(removal_flags, "canopy_out")),
       
-      TRUE ~ list(flag_removal)
+      TRUE ~ list(removal_flags)
     )
   ) %>%
   ungroup()
 
-##### Canopy out; root out
+##### Canopy out and root out
 vegetation_data_clean <- vegetation_data_clean %>%
   rowwise() %>%
   mutate(
-    flag_removal = case_when(
+    removal_flags = case_when(
       plotID == "LY_F_CV_1" & speciesID == "CV" & plant_nr == 2 ~ 
-        list(c(flag_removal, "canopy_root_out")),
+        list(c(removal_flags, "canopy_root_out")),
       
-      TRUE ~ list(flag_removal)
+      TRUE ~ list(removal_flags)
     )
   ) %>%
   ungroup()
 
-#### Adding other specific warnings to some replicates in the flag column #### Nothing in the removals!
+#### Adding other specific warnings to some replicates in the flags column #### Note: Nothing in the removals!
 
                   #### -- Control plots -- ####
 vegetation_data_clean <- vegetation_data_clean %>%
   rowwise() %>%
   mutate(
-    flag_control = case_when(
+    control_flags = case_when(
       #Graminoids with maybe a flower on top. Should consider delete it if this is a problem (see picture JR's sphone)
       plotID == "LY_O_VM_2" & speciesID == "G" & plant_nr == 1 ~ 
-        list(c(flag_control, "maybe_flower_height_measured")),
+        list(c(control_flags, "maybe_flower_height_measured")),
       
       plotID == "LY_O_VM_2" & speciesID == "G" & plant_nr == 3 ~ 
-        list(c(flag_control, "maybe_flower_height_measured")),
+        list(c(control_flags, "maybe_flower_height_measured")),
       
       #Measurements taken on the same individual for 3 replicates - should consider averaging them?
       plotID == "SO_O_VV_3" & speciesID == "CV" & plant_nr == 1 ~ 
-        list(c(flag_control, "replicates_from_same_individual")),
+        list(c(control_flags, "replicates_from_same_individual")),
       plotID == "SO_O_VV_3" & speciesID == "CV" & plant_nr == 2 ~ 
-        list(c(flag_control, "replicates_from_same_individual")),
+        list(c(control_flags, "replicates_from_same_individual")),
       plotID == "SO_O_VV_3" & speciesID == "CV" & plant_nr == 3 ~ 
-        list(c(flag_control, "replicates_from_same_individual")),
+        list(c(control_flags, "replicates_from_same_individual")),
       
       #Top height higher than stem length for EN - which is strange as ENs are prostrate
       plotID == "KA_O_VM_2" & speciesID == "EN" & plant_nr == 2 ~ 
-        list(c(flag_control, "top_height_higher_than_stem_length")),
+        list(c(control_flags, "top_height_higher_than_stem_length")),
       
-      TRUE ~ list(flag_control)
+      TRUE ~ list(control_flags)
     )
   ) %>%
   ungroup()
 
+# 3. Rearrange dataset
 ## Rename after "comment_control" and "comment_removal"
 vegetation_data_clean <- vegetation_data_clean %>%
   rename(
-    comment_control = comments_1,
-    comment_removal = comments_2
+    control_comment = comments_1,
+    removal_comment = comments_2
   )
 
-## Reorganize the tibble so that flag_* columns come after their comment_* column
+## Reorganize the tibble so that flags_* columns come after their comment_* column
 vegetation_data_clean <- vegetation_data_clean %>%
   select(
     year, date, date_2, site_name, siteID, habitat, plotID, recorder, weather,
     species, speciesID, plant_nr,
     control_top_height, control_bottom_height,
     control_stem_length, control_stem_diameter,
-    comment_control, flag_control,
+    control_comment, control_flags,
     removal_top_height, removal_bottom_height,
     removal_stem_length, removal_stem_diameter,
-    comment_removal, flag_removal
+    removal_comment, removal_flags
   )
 
-#Convert to long type: 
-##removal and control data in one column
-#vegetation_data_long <- vegetation_data_clean %>%
-#  pivot_longer(
-#    cols = c(control_top_height, control_bottom_height, control_stem_length, control_stem_diameter,
-#             removal_top_height, removal_bottom_height, removal_stem_length, removal_stem_diameter),
-#    names_to = c("type", ".value"),
-#    names_pattern = "(control|removal)_(.*)"
-#  )
-
-
-##and add a column with "removal" or "control" type
-
-
-# Export in csv
-vegetation_export <- vegetation_data_clean %>%
-  mutate(
-    flag_control_csv = sapply(flag_control, paste, collapse = "; "),
-    flag_removal_csv = sapply(flag_removal, paste, collapse = "; ")
+##Convert to long type: 
+###This means moving everything related to control and removal plots into a single column, with an additional column specifying whether the measurement is from a control or removal plot.
+vegetation_data_clean_long <- vegetation_data_clean %>%
+  pivot_longer(
+    cols = c(control_top_height, control_bottom_height, control_stem_length, control_stem_diameter, control_comment, control_flags,
+             removal_top_height, removal_bottom_height, removal_stem_length, removal_stem_diameter, removal_comment, removal_flags),
+    names_to = c("removal_control", ".value"),
+    names_pattern = "(control|removal)_(.*)"
   )
 
-write.csv(vegetation_export, "vegetation_data_clean.csv", row.names = FALSE)
+# 4. Export cleaned dataset
+## Change flags column into something readable in Excel
+vegetation_export_csv <- vegetation_data_clean_long
+vegetation_export_csv$flags <- vapply(
+  vegetation_export_csv$flags,
+  function(x) paste(sort(unique(x)), collapse = "|"),
+  character(1)
+)
 
-#Quick check on database
-#View(vegetation_data_list$LYGRA)
+## Export in CSV
+write.csv(vegetation_export_csv, "clean_data/DURIN_WP4_clean_4Corners_field_traits_dwarf_shrubs_forbs_gram_summer_2025.csv", row.names = FALSE)
 
-#Quick plot to see vegetation height between sites, only for certain speciesID (column name) and habitat
-ggplot(data=vegetation_data_stack %>% filter(speciesID=="EN" & habitat=="Forested")) +
-  geom_boxplot(aes(x=site_name, y=control_top_height, color=site_name)) +
-  labs(title="Vegetation height (cm) in control plots for EN in open habitat",
-       x="Site", y="Height (cm)") +
+#--------------------------------------------------------------------------------------#
+
+# 5. Quick plots to visualize data
+
+#What you want to see on your plots
+species_plot = 'EN' #Species ID to plot
+habitat_plot = 'Open' #Habitat to plot
+
+#Quick plot to see vegetation height between sites, only for certain speciesID (column name) and habitat - change species and habitat
+ggplot(data = vegetation_data_stack %>% filter(speciesID == species_plot & habitat == habitat_plot)) +
+  geom_boxplot(aes(x = site_name, y = control_top_height, color = site_name)) +
+  labs(title = sprintf("Vegetation height (cm) in control plots for %s in %s habitat",species_plot, habitat_plot),
+    x = "Site", y = "Height (cm)") +
   theme_minimal()
 
-#Boxplot of vegetation height in control plots for open VS forested habitat for 4 sites
-ggplot(data=vegetation_data_stack %>% filter(speciesID=="VV")) +
+#Boxplot of vegetation height in control plots for open VS forested habitat for 4 sites - change species
+ggplot(data=vegetation_data_stack %>% filter(speciesID==species_plot)) +
   geom_boxplot(aes(x=habitat, y=control_top_height, fill=habitat)) +
   facet_wrap(~site_name) +
-  labs(title="Vegetation height (cm) in control plots for VV in open VS forested habitat",
+  labs(title=sprintf("Vegetation height (cm) in control plots for %s in open VS forested habitat",species_plot),
        x="Habitat", y="Height (cm)") +
   theme_minimal()
 
 #Quick plot to see vegetation height VS stem length for each site, for open VS forested habitat - change species
-ggplot(data=vegetation_data_stack %>% filter(speciesID=="CV")) +
+ggplot(data=vegetation_data_stack %>% filter(speciesID==species_plot)) +
   geom_point(aes(x=control_stem_length, y=control_top_height, color=habitat)) +
   #Add a 1:1 line
   geom_abline(slope=1, intercept=0, linetype="dashed", color="black") +
   #Fit regression line on Open VS Forested data
   geom_smooth(aes(x=control_stem_length, y=control_top_height, color=habitat), method="lm", se=FALSE) +
   facet_wrap(~site_name) +
-  labs(title="Vegetation height (cm) VS stem length (cm) in control plots for Calluna vulgaris",
+  labs(title=sprintf("Vegetation height (cm) VS stem length (cm) in control plots for %s",species_plot),
        x="Stem length (cm)", y="Height (cm)") +
   theme_minimal()
 
 # Quick plot to see vegetation height VS stem diameter for each site, for open VS forested habitat - change species
-ggplot(data=vegetation_data_stack %>% filter(speciesID=="EN")) +
+ggplot(data=vegetation_data_stack %>% filter(speciesID==species_plot)) +
   geom_point(aes(x=control_stem_diameter, y=control_top_height, color=habitat)) +
   #Fit regression line on Open VS Forested data
   geom_smooth(aes(x=control_stem_diameter, y=control_top_height, color=habitat), method="lm", se=FALSE) +
   facet_wrap(~site_name) +
-  labs(title="Vegetation height (cm) VS stem diameter (mm) in control plots for EN",
+  labs(title=sprintf("Vegetation height (cm) VS stem diameter (mm) in control plots for %s",species_plot),
        x="Stem diameter (mm)", y="Height (cm)") +
   theme_minimal()
 
 # Quick plot to see stem length VS stem diameter for each site, for open VS forested habitat - change species
-ggplot(data=vegetation_data_stack %>% filter(speciesID=="EN")) +
+ggplot(data=vegetation_data_stack %>% filter(speciesID==species_plot)) +
   geom_point(aes(x=control_stem_diameter, y=control_stem_length, color=habitat)) +
   #Fit regression line on Open VS Forested data
   geom_smooth(aes(x=control_stem_diameter, y=control_stem_length, color=habitat), method="lm", se=FALSE) +
   facet_wrap(~site_name) +
-  labs(title="Stem length (cm) VS stem diameter (mm) in control plots for EN",
+  labs(title=sprintf("Stem length (cm) VS stem diameter (mm) in control plots for %s",species_plot),
        x="Stem diameter (mm)", y="Stem length (cm)") +
   theme_minimal()
 
 # Quick boxplot to see vegetation height in control VS removal plots for each site, for Open habitat - change species
-ggplot(data=vegetation_data_stack %>% filter(speciesID=="VV" & habitat=="Open")) +
+ggplot(data=vegetation_data_stack %>% filter(speciesID==species_plot & habitat=="Open")) +
   geom_boxplot(aes(x=site_name, y=control_top_height, fill="Control")) +
   geom_boxplot(aes(x=site_name, y=removal_top_height, fill="Removal"), alpha=0.5) +
-  labs(title="Vegetation height (cm) in control VS removal plots for VV in open habitat",
+  labs(title=sprintf("Vegetation height (cm) in control VS removal plots for %s in open habitat",species_plot),
        x="Site", y="Height (cm)") +
   scale_fill_manual(name="Plot type", values=c("Control"="lightblue", "Removal"="salmon")) +
   theme_minimal()
 
 # Quick boxplot to see vegetation height in control VS removal plots for each site, for Forested habitat - change species
-ggplot(data=vegetation_data_stack %>% filter(speciesID=="VV" & habitat=="Forested")) +
+ggplot(data=vegetation_data_stack %>% filter(speciesID==species_plot & habitat=="Forested")) +
   geom_boxplot(aes(x=site_name, y=control_top_height, fill="Control")) +
   geom_boxplot(aes(x=site_name, y=removal_top_height, fill="Removal"), alpha=0.5) +
-  labs(title="Vegetation height (cm) in control VS removal plots for VV in forested habitat",
+  labs(title=sprintf("Vegetation height (cm) in control VS removal plots for %s in forested habitat",species_plot),
        x="Site", y="Height (cm)") +
   scale_fill_manual(name="Plot type", values=c("Control"="lightblue", "Removal"="salmon")) +
   theme_minimal()
