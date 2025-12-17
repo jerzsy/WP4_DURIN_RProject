@@ -80,6 +80,17 @@ raw_df <- raw_df %>%
       TRUE ~ siteID
     )
   )
+
+# Habitat
+raw_df <- raw_df %>%
+  mutate(
+    habitat = case_when(
+      habitat %in% c("Open","open","OPen","opne") ~ "Open",
+      habitat %in% c("Forested","forested","FORESTED","forested") ~ "Forested",
+      TRUE ~ habitat
+    )
+  )
+
 # Tree position
 raw_df <- raw_df %>%
   mutate(
@@ -370,4 +381,14 @@ ggplot(final_df, aes(x = height_bottom, y = diff_height_bottom)) +
   labs(title = "Difference in Height Bottom vs Angles Height Bottom",
        x = "Angles Height Bottom (m)", 
        y = "Difference in Height Bottom (m)") +
+  theme_minimal()
+
+## Quick plot of Height top VS crown diameter
+ggplot(final_df, aes(x = crown_diameter_m, y = height_top)) +
+  geom_point(color = "purple") +
+  # Fit a regression line
+  geom_smooth(method = "lm", se = FALSE, color = "orange") +
+  labs(title = "Crown Diameter vs Height Top",
+       x = "Crown Diameter (m)",
+       y = "Height Top (m)") +
   theme_minimal()
