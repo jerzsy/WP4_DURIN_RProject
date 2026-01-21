@@ -14,11 +14,14 @@ lapply(packages, library, character.only = TRUE)
 wd <- getwd()
 setwd(wd)
 
+# Source function to calculate trees height
+source('code/Function_Calculate_Tree_Height.R')
+
 # File specifications
 ## File path
 file_path<- "raw_data/DURIN_WP4_raw_4Corners_field_traits_trees_2025.csv"
 
-## Column names
+## Column types
 col_spec <- cols(
   year = col_integer(),
   date = col_date(format = ""),
@@ -61,7 +64,7 @@ str(raw_df)
 
 # 1. Clean the data
 
-## Check for typos
+## 1.1 Check for typos
 # Site names
 raw_df <- raw_df %>%
   mutate(
@@ -102,7 +105,11 @@ raw_df <- raw_df %>%
     )
   )
 
-## Make flags and put them in a dedicated 'flags' column
+## 1.2 Remove full NA lines, from species to comments columns
+raw_df <- raw_df %>%
+  filter(!if_all(species:comments, is.na))
+
+## 1.3 Make flags and put them in a dedicated 'flags' column
 
 #--------------------------------------------------------------#
 ### Flag function for automatic check on measurements! ###
@@ -197,7 +204,19 @@ clean_df <- raw_df %>%
     )
   )
 
-## Update one plot name
+### Manual flag
+#### Not sure plot name
+clean_df <- clean_df %>%
+  rowwise() %>%
+  mutate(
+    flags = case_when(
+      plotID == "L_LY_F_EN_3" ~ list(c(flags, "plot_name_doubtful_see_comments")),
+      TRUE ~ list(flags)
+    )
+  )%>%
+  ungroup()
+  
+## 1.4 Update one plot name
 ## In the database, there are two L_SE_O_EN_2 plots: one of them is wrongly named and should be L_SE_O_VV_3 instead.
 clean_df <- clean_df %>%
   mutate(
@@ -213,72 +232,7 @@ clean_df <- clean_df %>%
 
 # 2. Add columns with heights of tree based on angle measurements
 
-#--------------------------------------------------------------#
-## Function to calculate height from angle and distance depending on the situation (same level as tree, tree uphill, tree downhill; positive and negative angles)
-
-calculate_tree_height <- function(plotID, plant_nr, dist_to_tree, eye_height, angle_canopy, angle_base, tree_position, height_pos, verbose = TRUE) { #for bottom or top height/angles
-  
-  # Convert angles from degrees to radians
-  angle_canopy_rad <- angle_canopy * (pi / 180)
-  angle_base_rad <- angle_base * (pi / 180)
-  
-  # --- 1. PRIORITY: invalid / warning cases first ---
-  if (angle_canopy_rad < angle_base_rad) {
-    if (verbose) {
-      print('Warning! Angle to canopy is less than angle to base! Check measurements! Setting height to NA!')
-      print(paste0("plotID: ", plotID, ", plant_nr: ", plant_nr, ", angle_canopy: ", angle_canopy, ", angle_base: ", angle_base, ", tree_position: ", tree_position))
-      }
-    return(list(height_canopy = NA, height_canopy_eye = NA))
-  }
-  
-  if ((angle_canopy_rad == angle_base_rad) & (height_pos == 'top')) {
-    if (verbose) {
-      print('Warning! Angle to top canopy is equal to angle to base! Check measurements! Setting height to NA!')
-      print(paste0("plotID: ", plotID, ", plant_nr: ", plant_nr, ", angle_canopy: ", angle_canopy, ", angle_base: ", angle_base, ", tree_position: ", tree_position))
-    }
-    return(list(height_canopy = NA, height_canopy_eye = NA))
-  }
-  
-  # --- 2. Normal geometric cases after all warning checks ---  
-  if (angle_canopy_rad > 0 & angle_base_rad > 0) {
-    # Tree should be uphill!
-    # Angle to canopy cannot be equal to zero otherwise smaller than angle of base
-    if (tree_position != 'uphill' && verbose) {
-        print('Warning! Angles indicate tree is uphill but tree_position is not set to uphill!')
-        print(paste0("plotID: ", plotID, ", plant_nr: ", plant_nr, ", angle_canopy: ", angle_canopy, ", angle_base: ", angle_base, ", tree_position: ", tree_position))
-    }
-    height_canopy <- dist_to_tree * tan(angle_canopy_rad) - dist_to_tree * tan(angle_base_rad)
-    height_canopy_eye <- NA
-    
-  } else if (angle_canopy_rad >= 0 & angle_base_rad < 0) {
-    # Can happen with tree being uphill, downhill or at the same level as the observer
-    # Equation is the same.
-    # In this case (angle to base < 0), angle to canopy can be equal to zero
-    height_canopy <- dist_to_tree * tan(angle_canopy_rad) + dist_to_tree * tan(-angle_base_rad)
-    height_canopy_eye <- if (tree_position == 'same')
-      eye_height + dist_to_tree * tan(angle_canopy_rad)
-    else NA
-    
-  } else if (angle_canopy_rad < 0 & angle_base_rad < 0) {
-    # Can happen with tree being uphill, downhill or at the same level as the observer
-    # Equation is the same.
-    height_canopy <- dist_to_tree * tan(-angle_base_rad) - dist_to_tree * tan(-angle_canopy_rad)
-    height_canopy_eye <- if (tree_position == 'same')
-      eye_height - dist_to_tree * tan(-angle_canopy_rad)
-    else NA
-    } else {
-      if (verbose) {
-        print('Warning! Unhandled case in height calculation! Setting height to NA!')
-        print(paste0("plotID: ", plotID, ", plant_nr: ", plant_nr, ", angle_canopy: ", angle_canopy, ", angle_base: ", angle_base, ", tree_position: ", tree_position))
-        }
-      return(list(height_canopy = NA, height_canopy_eye = NA))
-    }
-
-  return(list(height_canopy = height_canopy, height_canopy_eye = height_canopy_eye))
-}
-#--------------------------------------------------------------#
-
-## Apply height calculation function to the dataset and create a new columns for them
+## 2.1 Apply height calculation function to the dataset and create a new columns for them
 clean_df <- clean_df %>%
   rowwise() %>%
   mutate(
@@ -289,7 +243,7 @@ clean_df <- clean_df %>%
   ) %>%
   ungroup()
 
-## Check on height in meters?
+## 2.2 Check on height in meters?
 ###Print warning on negative heights?
 negative_heights <- clean_df %>%
   filter(height_top < 0 | height_bottom < 0)
@@ -298,8 +252,59 @@ if (nrow(negative_heights) > 0) {
   print(negative_heights %>% select(plotID, plant_nr, height_top, height_bottom))
 }
 
+## 2.3 Limit number to 3 decimals for height measurements columns
+clean_df <- clean_df %>%
+  mutate(
+    height_top = round(height_top, 3),
+    height_bottom = round(height_bottom, 3),
+    height_top_eye = round(height_top_eye, 3),
+    height_bottom_eye = round(height_bottom_eye, 3)
+  )
+
+## 2.4 Enter manually some heights that have been measured directly in the field
+clean_df <- clean_df %>%
+  mutate(
+    height_top = case_when(
+      plotID == "L_SO_O_CV_4" & plant_nr == 3 ~ 2.15,
+      TRUE ~ height_top
+    )
+  )
+
+clean_df <- clean_df %>%
+  mutate(
+    height_bottom = case_when(
+      plotID == "L_SO_O_CV_4" & plant_nr == 3 ~ 0,
+      TRUE ~ height_bottom
+    )
+  )
+
+
 #-----------------------------------------------#
-# 3. Rearrange dataset
+
+# 3. Adding a column that says if the individual from one plot is the same as another plot.
+
+## This is of limited utility because we are not sure it was stated every time in the comments when it was the same individual.
+## It is only stated starting from the second occurrence of the individual (not the first time it is measured).
+## It is written in the comment column if an individual is the same as another plot but here we are applying another criteria.
+## We are comparing data from all the measurement column.s to see if there are duplicates.
+clean_df <- clean_df %>%
+  mutate(
+    same_as_other_individual =
+      duplicated(select(.,
+                        girth_cm,
+                        girth_large_cm_1, girth_large_cm_2, girth_large_cm_3,
+                        #large_stems_nb, #commenting stem number because sometimes "0" is written, sometimes NA
+                        girth_small_cm_1, girth_small_cm_2, girth_small_cm_3,
+                        #small_stems_nb,
+                        dist_to_tree_m,
+                        eye_height_m,
+                        tree_position,
+                        angle_top_canopy, angle_bottom_canopy, angle_base,
+                        crown_diameter_m
+      ))
+  )
+
+# 4. Rearrange dataset
 ## Select and order columns
 final_df <- clean_df %>%
   select(year, date, site_name, siteID, habitat, plotID, recorder, weather,
@@ -314,11 +319,12 @@ final_df <- clean_df %>%
          angle_top_canopy, angle_bottom_canopy, angle_base,
          height_top, height_bottom, height_top_eye, height_bottom_eye,
          crown_diameter_m,
-         flags,
-         comments)
+         same_as_other_individual,
+         comments,
+         flags)
 
 #-------------------------------------------------------------#
-# 4. Export cleaned dataset
+# 5. Export cleaned dataset
 ## Change flag column into something readable in Excel
 final_df_export_csv <- final_df
 final_df_export_csv$flags <- vapply(
@@ -392,3 +398,4 @@ ggplot(final_df, aes(x = crown_diameter_m, y = height_top)) +
        x = "Crown Diameter (m)",
        y = "Height Top (m)") +
   theme_minimal()
+
