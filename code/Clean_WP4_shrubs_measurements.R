@@ -3,6 +3,7 @@
 ############################################
 
 # --- Shrubs measurements in large DURIN plots ---- #
+
 # Install and load packages
 packages <- c("tidyverse")
 new_packages <- packages[!(packages %in% installed.packages()[,"Package"])]
@@ -13,6 +14,9 @@ lapply(packages, library, character.only = TRUE)
 # Set wd
 wd <- getwd()
 setwd(wd)
+
+# Source function to calculate some shrub height
+source('code/Function_Calculate_Tree_Height.R')
 
 # File specifications
 ## File path
@@ -48,9 +52,10 @@ raw_df <- read_csv(file_path, col_types = col_spec, na = c("NA",""))
 # Quick check
 str(raw_df)
 
+#-----------------------------------------------#
 # 1. Clean the data
 
-## Check for typos
+## 1.1 Check for typos
 # Site names
 raw_df <- raw_df %>%
   mutate(
@@ -80,7 +85,11 @@ raw_df <- raw_df %>%
     )
   )
 
-## Make flags and put them in a dedicated 'flags' column
+## 1.2 Remove full NA lines, from species to comments columns
+raw_df <- raw_df %>%
+  filter(!if_all(species:comments, is.na))
+
+## 1.3 Make flags and put them in a dedicated 'flags' column
 
 #--------------------------------------------------------------#
 ### Flag function for automatic check on measurements! ###
@@ -133,7 +142,10 @@ clean_df <- raw_df %>%
     )
   )
 
-### Add some flags manually - some measurements were divided by 100 in crown diameter because the measurement was supposedly taken in cm and not m
+### Adding some flags manually - 
+#### Dividing or multiplying values by 100 because obviously wrong units were used when entering data
+#### some measurements were divided by 100 in crown diameter because the measurement was supposedly taken in cm and not m
+#### some measurements were multiplied by 100 in top height because the measurement was supposedly taken in m and not cm
 clean_df <- clean_df %>%
   rowwise() %>%
   mutate(
@@ -147,14 +159,202 @@ clean_df <- clean_df %>%
       plotID == "L_KA_F_EN_5" & plant_nr == 1 ~ list(c(flags, "crown_diameter_divided_by_100")),
       plotID == "L_KA_F_EN_5" & plant_nr == 2 ~ list(c(flags, "crown_diameter_divided_by_100")),
       plotID == "L_KA_F_EN_5" & plant_nr == 3 ~ list(c(flags, "crown_diameter_divided_by_100")),
+      plotID == "L_SO_F_VM_5" & plant_nr == 2 ~ list(c(flags, "crown_diameter_divided_by_100")),
+      plotID == "L_SO_F_VM_5" & plant_nr == 3 ~ list(c(flags, "crown_diameter_divided_by_100")),
+      plotID == "L_SO_F_VM_1" & plant_nr == 2 ~ list(c(flags, "crown_diameter_divided_by_100")),
+      plotID == "L_SO_F_VM_1" & plant_nr == 3 ~ list(c(flags, "crown_diameter_divided_by_100")),
+      plotID == "L_SO_O_VM_1" & plant_nr == 1 ~ list(c(flags, "crown_diameter_divided_by_100")),
+      
+      plotID == "L_SO_F_VV_5" & plant_nr == 3 ~ list(c(flags, "crown_diameter_divided_by_100_but_not_sure")),
+      
+      plotID == "L_SO_F_VV_1" & plant_nr == 2 ~ list(c(flags, "top_height_multiplied_by_100")),
+      plotID == "L_SO_F_VV_2" & plant_nr == 2 ~ list(c(flags, "top_height_multiplied_by_100")),
+      plotID == "L_SO_F_EN_1" & plant_nr == 2 ~ list(c(flags, "top_height_multiplied_by_100")),
+      plotID == "L_SO_O_EN_5" & plant_nr == 3 ~ list(c(flags, "top_height_multiplied_by_100")),
+      plotID == "L_SO_O_CV_4" & plant_nr == 2 ~ list(c(flags, "top_height_multiplied_by_100")),
       TRUE ~ list(flags)
     )
   ) %>%
   ungroup()
 
-# 2. Export cleaned dataset
+### Not sure of the plot name given because already existing or mismatch between fieldsheets
+clean_df <- clean_df %>%
+  rowwise() %>%
+  mutate(
+    flags = case_when(
+      plotID == "L_LY_F_EN_3" ~ list(c(flags, "plot_name_doubtful_see_comments")),
+      plotID == "L_LY_O_EN_1" ~ list(c(flags, "plot_name_doubtful_see_comments")),
+      TRUE ~ list(flags)
+    )
+  ) %>%
+  ungroup()
+
+## 1.4 Calculate some heights with angles to canopy because shrub was to tall to measure directly
+clean_df <- clean_df %>%
+  rowwise() %>%
+  mutate(
+    canopy_top_height_cm = case_when(
+      #L_SO_F_VM_5 nr 2 top height with angle: dist: 2.5; level; top = 37; base = -30; low canopy
+      plotID == "L_SO_F_VM_5" & plant_nr == 2 ~ calculate_tree_height(
+        plotID = plotID,
+        plant_nr = plant_nr,
+        angle_canopy = 37,
+        angle_base = -30,
+        dist_to_tree = 250,#in cm for shrubs because we want a height in cm
+        tree_position = "same",
+        height_pos = "top",
+        eye_height = NA,
+        verbose = TRUE
+      )$height_canopy,
+      
+      #L_SO_F_VM_1 nr 2 top height with angle: dist: 2.5; level; top = 37; base = -30; low canopy
+      plotID == "L_SO_F_VM_1" & plant_nr == 2 ~ calculate_tree_height(
+        plotID = plotID,
+        plant_nr = plant_nr,
+        angle_canopy = 37,
+        angle_base = -30,
+        dist_to_tree = 250,#in cm for shrubs because we want a height in cm
+        tree_position = "same",
+        height_pos = "top",
+        eye_height = NA,
+        verbose = TRUE
+      )$height_canopy,
+      
+      #L_SO_F_VV_5 nr 1 top height measured from angle: dist = 3.7; top = 30; base = -13
+      plotID == "L_SO_F_VV_5" & plant_nr == 1 ~ calculate_tree_height(
+        plotID = plotID,
+        plant_nr = plant_nr,
+        angle_canopy = 30,
+        angle_base = -13,
+        dist_to_tree = 370,#in cm for shrubs because we want a height in cm
+        tree_position = NA,
+        height_pos = "top",
+        eye_height = NA,
+        verbose = TRUE
+      )$height_canopy,
+      
+      #L_SO_F_VV_5 nr 2 top height measured from angle: dist = 3.5; top = 38; base = -10
+      plotID == "L_SO_F_VV_5" & plant_nr == 2 ~ calculate_tree_height(
+        plotID = plotID,
+        plant_nr = plant_nr,
+        angle_canopy = 38,
+        angle_base = -10,
+        dist_to_tree = 350,#in cm for shrubs because we want a height in cm
+        tree_position = NA,
+        height_pos = "top",
+        eye_height = NA,
+        verbose = TRUE
+      )$height_canopy,
+      
+      #L_SO_F_VV_1 nr 1 Top and bottom heights measured from angle: dist = 2.5; upper angle = 36; bottom= bottom canopy = -35
+      plotID == "L_SO_F_VV_1" & plant_nr == 1 ~ calculate_tree_height(
+        plotID = plotID,
+        plant_nr = plant_nr,
+        angle_canopy = 36,
+        angle_base = -35,
+        dist_to_tree = 250,#in cm for shrubs because we want a height in cm
+        tree_position = NA,
+        height_pos = "top",
+        eye_height = NA,
+        verbose = TRUE
+      )$height_canopy,
+
+      #L_SO_F_VV_2 nr 1 Top and bottom heights measured from angle: dist = 2.5; upper angle = 36; bottom= bottom canopy = -35
+      plotID == "L_SO_F_VV_2" & plant_nr == 1 ~ calculate_tree_height(
+        plotID = plotID,
+        plant_nr = plant_nr,
+        angle_canopy = 36,
+        angle_base = -35,
+        dist_to_tree = 250,#in cm for shrubs because we want a height in cm
+        tree_position = NA,
+        height_pos = "top",
+        eye_height = NA,
+        verbose = TRUE
+      )$height_canopy,
+
+      #L_SO_F_EN_3 nr 1 top height measured from angle: dist = 2.4; top angle = 44 ; bottom angle = -24; canopy base = -24;
+      plotID == "L_SO_F_EN_3" & plant_nr == 1 ~ calculate_tree_height(
+        plotID = plotID,
+        plant_nr = plant_nr,
+        angle_canopy = 44,
+        angle_base = -24,
+        dist_to_tree = 240,#in cm for shrubs because we want a height in cm
+        tree_position = NA,
+        height_pos = "top",
+        eye_height = NA,
+        verbose = TRUE
+      )$height_canopy,
+      
+      #L_SO_F_VM_3 nr 2 top height measured with angle: dist = 3m, top = 39; base = -20; low canopy = -15
+      plotID == "L_SO_F_VM_3" & plant_nr == 2 ~ calculate_tree_height(
+        plotID = plotID,
+        plant_nr = plant_nr,
+        angle_canopy = 39,
+        angle_base = -20,
+        dist_to_tree = 300,#in cm for shrubs because we want a height in cm
+        tree_position = NA,
+        height_pos = "top",
+        eye_height = NA,
+        verbose = TRUE
+      )$height_canopy,
+      
+      TRUE ~ canopy_top_height_cm
+    )
+  ) %>%
+  ungroup()
+
+### Limit number to 3 decimals for height measurements columns
+clean_df <- clean_df %>%
+  mutate(
+    canopy_top_height_cm = round(canopy_top_height_cm, 3),
+    canopy_bottom_height_cm = round(canopy_bottom_height_cm, 3),
+  )
+
+## 1.5 Adding a column that says if the individual from one plot is the same as another plot.
+
+## This is of limited utility because we are not sure it was stated every time in the comments when it was the same individual.
+## It is only stated starting from the second occurrence of the individual (not the first time it is measured).
+## It is written in the comment column if an individual is the same as another plot but here we are applying another criteria.
+## We are comparing data from all the measurement column.s to see if there are duplicates.
+clean_df <- clean_df %>%
+  mutate(
+    same_as_other_individual =
+      duplicated(select(., 
+                        large_girth_cm_1, large_girth_cm_2, large_girth_cm_3,
+                        #large_stems_nb, #commenting stem number because sometimes "0" is written, sometimes NA
+                        small_girth_cm_1, small_girth_cm_2, small_girth_cm_3,
+                        #small_stems_nb,
+                        girth_cm_1, girth_cm_2, girth_cm_3,
+                        #stems_nb,
+                        canopy_top_height_cm,
+                        canopy_bottom_height_cm,
+                        crown_diameter_m
+      ))
+  )
+
+#-----------------------------------------------#
+
+# 2. Rearrange columns so that comments and flags are last
+final_df <- clean_df %>%
+  select(
+    year, date, site_name, siteID, habitat, plotID, recorder, weather,
+    plant_nr, species, speciesID,
+    dist_to_center_m,
+    large_girth_cm_1, large_girth_cm_2, large_girth_cm_3, large_stems_nb,
+    small_girth_cm_1, small_girth_cm_2, small_girth_cm_3, small_stems_nb,
+    girth_cm_1, girth_cm_2, girth_cm_3, stems_nb,
+    canopy_top_height_cm,
+    canopy_bottom_height_cm,
+    crown_diameter_m,
+    same_as_other_individual,
+    comments,
+    flags)
+
+#-----------------------------------------------#
+
+# 3. Export cleaned dataset
 ## Change flag column into something readable in Excel
-final_df_export_csv <- clean_df
+final_df_export_csv <- final_df
 final_df_export_csv$flags <- vapply(
   final_df_export_csv$flags,
   function(x) paste(sort(unique(x)), collapse = "|"),
@@ -164,7 +364,9 @@ final_df_export_csv$flags <- vapply(
 ## Export in CSV
 write.csv(final_df_export_csv, "clean_data/DURIN_WP4_clean_4Corners_field_traits_shrubs_2025.csv", row.names = FALSE)
 
-# 3. Quick plots on data
+#-----------------------------------------------#
+
+# 4. Quick plots on data
 
 ## Histogram of crown diameter
 ggplot(clean_df, aes(x = crown_diameter_m)) +
@@ -188,3 +390,4 @@ ggplot(clean_df, aes(x = crown_diameter_m, y = canopy_top_height_cm)) +
   geom_smooth(method = "lm", se = FALSE, color = "orange") +
   labs(title = "Crown Diameter vs Canopy Top Height", x = "Crown Diameter (m)", y = "Canopy Top Height (cm)") +
   theme_minimal()
+s
