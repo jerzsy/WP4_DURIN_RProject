@@ -64,8 +64,9 @@ str(vegetation_data_list)   # shows a list of tibbles, each named by site
 # Stack all data into one tibble
 vegetation_data_stack <- bind_rows(vegetation_data_list)#, .id = "site_name")
 
-# Data cleaning
-## 1. Check for typos
+#------------------------------------------------------------------------------#
+# 1. Data check
+## 1.1 Check for typos
 ### Site names
 vegetation_data_stack <- vegetation_data_stack %>%
   mutate(
@@ -84,6 +85,8 @@ vegetation_data_stack <- vegetation_data_stack %>%
     siteID = case_when(
       siteID %in% c("SE","SENJA","Senja","senja","se","Se") ~ "SE",
       siteID %in% c("KA","KAUTOKEINO","Kautokeino","kautokeino","KAUTOKINO","ka","Ka") ~ "KA",
+      siteID %in% c("LY","LYGRA","Lygra","lygra","lyrga","Lyrga","ly","Ly") ~ "LY",
+      siteID %in% c("SO","SOGNDAL","Sogndal","sogndal","Sogndl","Sogndla","so","So") ~ "SO",
       TRUE ~ siteID
     )
   )
@@ -113,9 +116,9 @@ vegetation_data_stack <- vegetation_data_stack %>%
   )
 
 
-## 2. Add columns with flags for removal and control plots
+# 2. Add columns with flags for removal and control plots
 #-------------------------------------------------------------------#
-### flag function for automatic check on measurements! ###
+## flag function for automatic check on measurements! ###
 make_flags <- function(top, bottom, stem_len, stem_diam, species) {
   
   flags <- c(
@@ -171,7 +174,7 @@ make_flags <- function(top, bottom, stem_len, stem_diam, species) {
 }
 #-------------------------------------------------------------------#
 
-### Apply the flagging function to control and removal data
+## Apply the flagging function to control and removal data
 vegetation_data_clean <- vegetation_data_stack %>%
   mutate(
     control_flags = pmap(
@@ -192,13 +195,13 @@ vegetation_data_clean <- vegetation_data_stack %>%
     )
   )
 
-### Adding some warnings on data manually in the flag column
+## Adding some warnings on data manually in the flag column
 
-#### Configuration of replicates - canopy or root out? ####
+### Configuration of replicates - canopy or root out? ####
 
             #### -- Control plots -- ####
 
-##### Root out
+#### Root out
 vegetation_data_clean <- vegetation_data_clean %>%
   rowwise() %>%
   mutate(
@@ -334,7 +337,7 @@ vegetation_data_clean <- vegetation_data_clean %>%
   ) %>%
   ungroup()
 
-##### Canopy out
+#### Canopy out
 vegetation_data_clean <- vegetation_data_clean %>%
   rowwise() %>%
   mutate(
@@ -359,7 +362,7 @@ vegetation_data_clean <- vegetation_data_clean %>%
   ) %>%
   ungroup()
 
-##### Canopy out and root out
+#### Canopy out and root out
 vegetation_data_clean <- vegetation_data_clean %>%
   rowwise() %>%
   mutate(
@@ -381,7 +384,7 @@ vegetation_data_clean <- vegetation_data_clean %>%
 
                 #### -- Removal plots -- ####
 
-##### Root out
+#### Root out
 vegetation_data_clean <- vegetation_data_clean %>%
   rowwise() %>%
   mutate(
@@ -433,7 +436,7 @@ vegetation_data_clean <- vegetation_data_clean %>%
   ) %>%
   ungroup()
 
-##### Canopy out
+#### Canopy out
 vegetation_data_clean <- vegetation_data_clean %>%
   rowwise() %>%
   mutate(
@@ -470,7 +473,7 @@ vegetation_data_clean <- vegetation_data_clean %>%
   ) %>%
   ungroup()
 
-##### Canopy out and root out
+#### Canopy out and root out
 vegetation_data_clean <- vegetation_data_clean %>%
   rowwise() %>%
   mutate(
@@ -483,7 +486,7 @@ vegetation_data_clean <- vegetation_data_clean %>%
   ) %>%
   ungroup()
 
-#### Adding other specific warnings to some replicates in the flags column #### Note: Nothing in the removals!
+### Adding other specific warnings to some replicates in the flags column #### Note: Nothing in the removals!
 
                   #### -- Control plots -- ####
 vegetation_data_clean <- vegetation_data_clean %>%
