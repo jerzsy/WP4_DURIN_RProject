@@ -62,6 +62,8 @@ raw_df <- raw_df %>%
     site_name = case_when(
       site_name %in% c("SENJA","Senja","senja") ~ "Senja",
       site_name %in% c("KAUTOKEINO","Kautokeino","kautokeino","KAUTOKINO") ~ "Kautokeino",
+      site_name %in% c("LYGRA","Lygra","lygra","lyrga","Lyrga") ~ "Lygra",
+      site_name %in% c("SOGNDAL","Sogndal","sogndal","Sogndl","Sogndla") ~ "Sogndal",
       TRUE ~ site_name
     )
   )
@@ -71,6 +73,8 @@ raw_df <- raw_df %>%
     siteID = case_when(
       siteID %in% c("SE","SENJA","Senja","senja","se","Se") ~ "SE",
       siteID %in% c("KA","KAUTOKEINO","Kautokeino","kautokeino","KAUTOKINO","ka","Ka") ~ "KA",
+      siteID %in% c("LY","LYGRA","Lygra","lygra","lyrga","Lyrga","ly","Ly") ~ "LY",
+      siteID %in% c("SO","SOGNDAL","Sogndal","sogndal","Sogndl","Sogndla","so","So") ~ "SO",
       TRUE ~ siteID
     )
   )
@@ -390,4 +394,3 @@ ggplot(clean_df, aes(x = crown_diameter_m, y = canopy_top_height_cm)) +
   geom_smooth(method = "lm", se = FALSE, color = "orange") +
   labs(title = "Crown Diameter vs Canopy Top Height", x = "Crown Diameter (m)", y = "Canopy Top Height (cm)") +
   theme_minimal()
-s

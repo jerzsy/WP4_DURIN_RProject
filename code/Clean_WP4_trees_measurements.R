@@ -71,6 +71,8 @@ raw_df <- raw_df %>%
     site_name = case_when(
       site_name %in% c("SENJA","Senja","senja") ~ "Senja",
       site_name %in% c("KAUTOKEINO","Kautokeino","kautokeino","KAUTOKINO") ~ "Kautokeino",
+      site_name %in% c("LYGRA","Lygra","lygra","lyrga","Lyrga") ~ "Lygra",
+      site_name %in% c("SOGNDAL","Sogndal","sogndal","Sogndl","Sogndla") ~ "Sogndal",
       TRUE ~ site_name
     )
   )
@@ -80,6 +82,8 @@ raw_df <- raw_df %>%
     siteID = case_when(
       siteID %in% c("SE","SENJA","Senja","senja","se","Se") ~ "SE",
       siteID %in% c("KA","KAUTOKEINO","Kautokeino","kautokeino","KAUTOKINO","ka","Ka") ~ "KA",
+      siteID %in% c("LY","LYGRA","Lygra","lygra","lyrga","Lyrga","ly","Ly") ~ "LY",
+      siteID %in% c("SO","SOGNDAL","Sogndal","sogndal","Sogndl","Sogndla","so","So") ~ "SO",
       TRUE ~ siteID
     )
   )
@@ -284,7 +288,7 @@ clean_df <- clean_df %>%
 # 3. Adding a column that says if the individual from one plot is the same as another plot.
 
 ## This is of limited utility because we are not sure it was stated every time in the comments when it was the same individual.
-## It is only stated starting from the second occurrence of the individual (not the first time it is measured).
+## In this code, it is only stated starting from the second occurrence of the individual (not the first time it is measured).
 ## It is written in the comment column if an individual is the same as another plot but here we are applying another criteria.
 ## We are comparing data from all the measurement column.s to see if there are duplicates.
 clean_df <- clean_df %>%
