@@ -20,6 +20,9 @@
 *.xlsx
 *.txt
 Excel_to_csv.R
+#data_descr_and_dic_making_JR.R
+#data_descr
+#data_dic
 
 #figures & output (excludes all figure files)
 *.png
