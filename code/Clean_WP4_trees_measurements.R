@@ -15,7 +15,7 @@ wd <- getwd()
 setwd(wd)
 
 # Source function to calculate trees height
-source('code/Function_Calculate_Tree_Height.R')
+source('code/Functions/Function_Calculate_Tree_Height.R')
 
 # File specifications
 ## File path
