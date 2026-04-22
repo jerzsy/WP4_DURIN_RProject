@@ -17,7 +17,7 @@ setwd(wd)
 
 # File specifications
 ## File path
-file_path<- "raw_data/DURIN_WP4_raw_4Corners_field_biomass_trait_cover_dwarf_shrubs_2025_OFF_SE_KA_ONLY.csv" #UPDATE LATER WITH LYGRA AND SOGNDAL
+file_path<- "raw_data/DURIN_WP4_raw_4Corners_field_biomass_structure_cover_dwarf_shrubs_2025_OFF_SE_KA_ONLY.csv" #UPDATE LATER WITH LYGRA AND SOGNDAL
 
 ## Column types
 col_spec <- cols(
@@ -32,7 +32,7 @@ col_spec <- cols(
   species = col_character(),
   speciesID = col_character(),
   plant_nr = col_integer(),
-  plant_cover = col_double(),
+  plant_cover = col_character(), #importing as character to avoid problems with "<1" plant cover.
   top_height_in_all = col_double(),
   top_height_in_without_flowers = col_double(),
   top_height_out_all = col_double(),
@@ -55,10 +55,18 @@ raw_df <- read_csv(file_path, col_types = col_spec, na = c("NA",""))
 # Quick check
 str(raw_df)
 
+#Find "<1" entries in plant cover column and convert to 0.5, then convert column to numeric.
+raw_df <- raw_df %>%
+  mutate(plant_cover = ifelse((plant_cover == "<1" | plant_cover == " <1" | plant_cover == "< 1"), 0.5, plant_cover),
+         plant_cover = as.numeric(plant_cover))
+
 #------------------------------------------------------------------------------#
 
 # 1. Data check
 ## 1.1 Check for typos
+# Make sure there is no blank space in the beginning or the end of the string in the character columns
+raw_df <- raw_df %>%
+  mutate(across(where(is.character), ~ trimws(.)))
 # Site names
 raw_df <- raw_df %>%
   mutate(
@@ -70,6 +78,7 @@ raw_df <- raw_df %>%
       TRUE ~ site_name
     )
   )
+
 #Site ID
 raw_df <- raw_df %>%
   mutate(
@@ -237,10 +246,12 @@ clean_df <- clean_df %>%
         plotID == "E_KA_F_VM_4" & speciesID == "VV" ~ 25, #NA was written
         plotID == "E_KA_F_VM_4" & speciesID == "EN" ~ 0, #NA was written instead of 0 (only 1 replicate)
         
-        #plotID == "E_SE_F_CV_2" & speciesID == "CV" ~ ,#to count in the lab!
-        #plotID == "E_KA_F_VM_2" & speciesID == "VV" ~ ,#to count in the lab!
-        #plotID == "E_KA_F_VV_4" & speciesID == "EN" ~ ,#figuring out if this is actually VV_5_B!
+        plotID == "E_SE_F_CV_2" & speciesID == "CV" ~ 2,#1 in all bag (or maybe two as there are two different branches but seemed to be from the same individiual) + 1 unknown bag ; to count in the lab!
+        plotID == "E_KA_F_VM_2" & speciesID == "VV" ~ 30,#to count in the lab!
+        #plotID == "E_KA_F_VV_4" & speciesID == "EN" ~ ,#figuring out if this is actually VV_5_B!# later: Shouldn't this be "VV"? 
         #plotID == "E_KA_F_VV_5" & speciesID == "VV" ~ ,#figuring out if this is actually VV_5_A!
+        #plotID == "E_SO_F_CV_2" & speciesID == "VM" ~ ,#to count in the lab!
+        #plotID == "E_SO_F_CV_2" & speciesID == "CV" ~ ,#to count in the lab!
         
         plotID == "E_SE_O_EN_2" & speciesID == "VV" ~ 0,#was written 3 for the 3 replicates instead of 0
         plotID == "E_KA_O_VV_5" & speciesID == "EN" ~ 0,#was written 3 for the 3 replicates instead of likely 0 as we could not find an "all" bag.
@@ -251,7 +262,8 @@ clean_df <- clean_df %>%
   )
 
 ## Now calculate the total number of harvested individuals
-## If NA in the 'without replicates' number --> NA
+## If NA in the 'without replicates' number --> NA (Northern sites) or number of harvested individuals (for Southern sites where we directly 
+## calculated the total number of individuals on the field and not the number of individuals harvested without the replicates)
 ## If 0 or more --> number of replicates (0 to 3), which depends on the number of lines without NA's values in the measurements for the species
 ## for only EN or CV or VV or VM species rows, for one plot
 clean_df <- clean_df %>%
@@ -262,7 +274,7 @@ clean_df <- clean_df %>%
       TRUE ~ NA_integer_
     ),
     number_harvest_indiv = case_when(
-      is.na(number_harvested_indiv_without_3_rep) ~ number_harvest_indiv,#number_harvest_indiv and not NA because for South sites (LY, SO), 
+      is.na(number_harvested_indiv_without_3_rep) ~ number_harvest_indiv,# = number_harvest_indiv and not NA because for South sites (LY, SO), 
                                                                         #we directly calculated the total number of individuals on the field
       !is.na(number_harvested_indiv_without_3_rep) ~ number_harvested_indiv_without_3_rep + number_replicates,
       TRUE ~ number_harvest_indiv
@@ -313,10 +325,10 @@ final_df_export_csv$flags <- vapply(
 )
 
 ## Export csv file
-write_csv(final_df_export_csv, "clean_data/DURIN_WP4_clean_4Corners_field_biomass_trait_cover_dwarf_shrubs_2025_OFF_SE_KA_ONLY.csv")
+write_csv(final_df_export_csv, "clean_data/DURIN_WP4_clean_4Corners_field_biomass_structure_cover_dwarf_shrubs_2025_OFF_SE_KA_ONLY.csv")
 
 # TO DO
-## Replace comment column for the "lab" column by the comment column from the original dataset. NOT the comment in the lab column. And merge for the measurements 
+## Replace comment column for the "lab" database column by the comment column from the original dataset. NOT the comment in the lab column. And merge for the measurements 
 #I think I'll have another script to merge both databases and that'll be my raw measurements data sheet.
 
 # Quick ggplots

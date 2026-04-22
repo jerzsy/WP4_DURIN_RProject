@@ -21,7 +21,7 @@ sites_name <- c("LYGRA","SOGNDAL","SENJA","KAUTOKEINO")
 
 ## File paths for each site ##To be updated with download from OSF ----------------------------
 file_paths <- sprintf(
-  "raw_data/DURIN_WP4_raw_4Corners_%s_field_traits_dwarf_shrubs_forbs_gram_summer_2025.csv",
+  "raw_data/DURIN_WP4_raw_4Corners_%s_field_structure_dwarf_shrubs_forbs_gram_summer_2025.csv",
   sites_name
 )
 
@@ -67,6 +67,9 @@ vegetation_data_stack <- bind_rows(vegetation_data_list)#, .id = "site_name")
 #------------------------------------------------------------------------------#
 # 1. Data check
 ## 1.1 Check for typos
+# Make sure there is no blank space in the beginning or the end of the string in the character columns
+raw_df <- raw_df %>%
+  mutate(across(where(is.character), ~ trimws(.)))
 ### Site names
 vegetation_data_stack <- vegetation_data_stack %>%
   mutate(
@@ -558,7 +561,7 @@ vegetation_export_csv$flags <- vapply(
 )
 
 ## Export in CSV
-write.csv(vegetation_export_csv, "clean_data/DURIN_WP4_clean_4Corners_field_traits_dwarf_shrubs_forbs_gram_summer_2025.csv", row.names = FALSE)
+write.csv(vegetation_export_csv, "clean_data/DURIN_WP4_clean_4Corners_field_structure_dwarf_shrubs_forbs_gram_summer_2025.csv", row.names = FALSE)
 
 #--------------------------------------------------------------------------------------#
 

@@ -7,14 +7,15 @@ if(length(new_packages)) install.packages(new_packages)
 lapply(packages, library, character.only = TRUE)
 
 # Input - dataset name 
-data_name <- 'DURIN_WP4_clean_4Corners_field_traits_dwarf_shrubs_forbs_gram_summer_2025.csv'
-  #'DURIN_WP4_clean_4Corners_field_traits_trees_2025.csv'
-  #'DURIN_WP4_clean_4Corners_field_traits_shrubs_2025.csv'
-  #'DURIN_WP4_clean_4Corners_field_traits_dwarf_shrubs_forbs_gram_summer_2025.csv'
-table_ID <- 'traits_DURIN'
+data_name <- 'DURIN_WP4_clean_4Corners_field_biomass_structure_cover_MFGL_2025.csv'
+  #'DURIN_WP4_clean_4Corners_field_structure_trees_2025.csv'
+  #'DURIN_WP4_clean_4Corners_field_structure_shrubs_2025.csv'
+  #'DURIN_WP4_clean_4Corners_field_structure_dwarf_shrubs_forbs_gram_summer_2025.csv'
+table_ID <- 'biomass_structure_MFGL'
+  #'biomass_structure_DS'
   #'trees' 
   #'shrubs'
-  #'traits_DURIN'
+  #'vegetation_structure_DURIN'
 
 #Download clean data from clean_data folder 
 data_to_process <- read_csv("clean_data/" %>% paste0(data_name)) #or directly from OSF

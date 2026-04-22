@@ -20,7 +20,7 @@ source('code/Functions/Function_Calculate_Tree_Height.R')
 
 # File specifications
 ## File path
-file_path<- "raw_data/DURIN_WP4_raw_4Corners_field_traits_shrubs_2025.csv"
+file_path<- "raw_data/DURIN_WP4_raw_4Corners_field_structure_shrubs_2025.csv"
 
 ## Column names
 col_spec <- cols(
@@ -56,6 +56,9 @@ str(raw_df)
 # 1. Clean the data
 
 ## 1.1 Check for typos
+# Make sure there is no blank space in the beginning or the end of the string in the character columns
+raw_df <- raw_df %>%
+  mutate(across(where(is.character), ~ trimws(.)))
 # Site names
 raw_df <- raw_df %>%
   mutate(
@@ -366,7 +369,7 @@ final_df_export_csv$flags <- vapply(
 )
 
 ## Export in CSV
-write.csv(final_df_export_csv, "clean_data/DURIN_WP4_clean_4Corners_field_traits_shrubs_2025.csv", row.names = FALSE)
+write.csv(final_df_export_csv, "clean_data/DURIN_WP4_clean_4Corners_field_structure_shrubs_2025.csv", row.names = FALSE)
 
 #-----------------------------------------------#
 

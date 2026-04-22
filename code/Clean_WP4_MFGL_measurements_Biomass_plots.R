@@ -17,7 +17,7 @@ setwd(wd)
 
 # File specifications
 ## File path
-file_path<- "raw_data/DURIN_WP4_raw_4Corners_field_biomass_trait_cover_MFGL_2025.csv"
+file_path<- "raw_data/DURIN_WP4_raw_4Corners_field_biomass_structure_cover_MFGL_2025.csv"
 
 ## Column types
 col_spec <- cols(
@@ -55,6 +55,9 @@ raw_df <- raw_df %>%
 
 # 1. Data check
 ## 1.1 Check for typos
+# Make sure there is no blank space in the beginning or the end of the string in the character columns
+raw_df <- raw_df %>%
+  mutate(across(where(is.character), ~ trimws(.)))
 # Site names
 raw_df <- raw_df %>%
   mutate(
@@ -187,4 +190,4 @@ final_df_export_csv$flags <- vapply(
 )
 
 ## Export csv file
-write_csv(final_df_export_csv, "clean_data/DURIN_WP4_clean_4Corners_field_biomass_trait_cover_MFGL_2025.csv")
+write_csv(final_df_export_csv, "clean_data/DURIN_WP4_clean_4Corners_field_biomass_structure_cover_MFGL_2025.csv")
