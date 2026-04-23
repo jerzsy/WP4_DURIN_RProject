@@ -7,12 +7,13 @@ if(length(new_packages)) install.packages(new_packages)
 lapply(packages, library, character.only = TRUE)
 
 # Input - dataset name 
-data_name <- 'DURIN_WP4_clean_4Corners_field_biomass_structure_cover_MFGL_2025.csv'
+data_name <- 'DURIN_WP4_clean_4Corners_field_biomass_structure_cover_dwarf_shrubs_2025.csv'
+  #'DURIN_WP4_clean_4Corners_field_biomass_structure_cover_MFGL_2025.csv'
   #'DURIN_WP4_clean_4Corners_field_structure_trees_2025.csv'
   #'DURIN_WP4_clean_4Corners_field_structure_shrubs_2025.csv'
   #'DURIN_WP4_clean_4Corners_field_structure_dwarf_shrubs_forbs_gram_summer_2025.csv'
-table_ID <- 'biomass_structure_MFGL'
-  #'biomass_structure_DS'
+table_ID <- 'biomass_structure_DS'
+  #'biomass_structure_MFGL'
   #'trees' 
   #'shrubs'
   #'vegetation_structure_DURIN'

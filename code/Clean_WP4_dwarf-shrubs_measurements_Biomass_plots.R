@@ -17,7 +17,7 @@ setwd(wd)
 
 # File specifications
 ## File path
-file_path<- "raw_data/DURIN_WP4_raw_4Corners_field_biomass_structure_cover_dwarf_shrubs_2025_OFF_SE_KA_ONLY.csv" #UPDATE LATER WITH LYGRA AND SOGNDAL
+file_path<- "raw_data/DURIN_WP4_raw_4Corners_field_biomass_trait_cover_dwarf_shrubs_2025_OFF_ALL.csv"#"raw_data/DURIN_WP4_raw_4Corners_field_biomass_structure_cover_dwarf_shrubs_2025_OFF_SE_KA_ONLY.csv" #UPDATE LATER WITH LYGRA AND SOGNDAL
 
 ## Column types
 col_spec <- cols(
@@ -46,7 +46,10 @@ col_spec <- cols(
   number_harvested_indiv_without_3_rep = col_integer(),
   number_harvest_indiv = col_integer(),
   Pic_numbers = col_character(),
-  comment = col_character()
+  comment = col_character(),
+  recorder_lab = col_character(),
+  date_lab = col_date(format = ""),
+  comment_lab = col_character()
 )
 
 # Read the file #Only for Senja and Kautokeino for now as measurements are still ongoing in the lab for Lygra and Sogndal.
@@ -188,6 +191,7 @@ make_flags <- function(cover, top_in, top_in_flowers, top_out, top_in_out, top_i
         (is.na(stem_diam_out)) ~ "missing_measured_value_out",
       TRUE ~ NA_character_
     ),
+    # It's hard or not possible to check for missing height out because you could have stem length out without canopy out.
     
     # Check for top_height values equal to 0. It is up to the data user to decide what to do with these values. May be a bit suspicious for TOP height.
     case_when(
@@ -307,13 +311,21 @@ clean_df <- clean_df %>%
 # in/out depending on the biomass in/out)
 # In the South, vegetation height when the individual was both in and out was measured in the plot and on the full individual. 
 
+clean_df <- clean_df %>%
+  mutate(
+    full_indiv_top_height = case_when(
+      !is.na(top_height_in_out_all) ~ top_height_in_out_all,# only for South site then, as for North sites it's only out_all measured.
+      is.na(top_height_in_out_all) & is.na(top_height_out_all) & !is.na(top_height_in_all) ~ top_height_in_all, # So for North sites, that will only tell when it's fully in. 
+      TRUE ~ NA_real_
+    )
+  )
 
 
 
 # 6. Reorganize columns of the dataset so that everything comes before the comment/flags columns; 
 # and full stem length and stem diameter columns come after stem_length_in_out
 final_df <- clean_df %>%
-  select(year:stem_length_in_out, full_indiv_stem_length, full_indiv_stem_diameter, number_harvested_indiv_without_3_rep:number_harvest_indiv, Pic_numbers, comment, flags)
+  select(year:stem_length_in_out, full_indiv_stem_length, full_indiv_stem_diameter, number_harvested_indiv_without_3_rep:number_harvest_indiv, Pic_numbers, comment, recorder_lab, date_lab, comment_lab, flags)
 
 # 7. Export dataset
 ## Change flags column into something readable outside R.
@@ -325,7 +337,7 @@ final_df_export_csv$flags <- vapply(
 )
 
 ## Export csv file
-write_csv(final_df_export_csv, "clean_data/DURIN_WP4_clean_4Corners_field_biomass_structure_cover_dwarf_shrubs_2025_OFF_SE_KA_ONLY.csv")
+write_csv(final_df_export_csv, "clean_data/DURIN_WP4_clean_4Corners_field_biomass_structure_cover_dwarf_shrubs_2025.csv")#_OFF_SE_KA_ONLY.csv")
 
 # TO DO
 ## Replace comment column for the "lab" database column by the comment column from the original dataset. NOT the comment in the lab column. And merge for the measurements 
