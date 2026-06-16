@@ -158,6 +158,7 @@ raw_df_lab <- raw_df_lab %>%
 
 raw_df_full_db <- raw_df_full_db %>%
   mutate(plant_nr = ifelse(plotID == "E_SO_F_EN_1" & speciesID == "EN" & plant_nr == 4 & top_height_in_all == 21.1, 2, plant_nr))
+
 # Now merge both datasheets - taking Senja and Kautokeino sites only and adding them at the end of the lab database.
 ## Check for typos in siteIDs
 raw_df_full_db <- raw_df_full_db %>%
@@ -187,16 +188,18 @@ col_to_check <- setdiff(colnames(raw_df_lab),missing_cols_full_db)
 raw_df_lab_check <- raw_df_lab[which(raw_df_lab$plotID %in% raw_df_full_db_south$plotID),]  
 for (col in col_to_check){
   #compare values in two columns with a function
-a <- raw_df_full_db_south[col]
-b <- raw_df_lab_check[col]
-if (!all(a == b, na.rm = TRUE)) {
-  warning(paste("Values in column", col, "are different between the lab and the South database. Please check the values in this column."))
-  #print the values that are different as well as the rows where they are different
-  diff_rows <- which(a != b)
-  print(paste("Values in column", col, "are different in the following rows: "))
-  print(diff_rows)
-  print(raw_df_full_db_south[diff_rows,])
-  print(raw_df_lab_check[diff_rows,])
+  a <- raw_df_full_db_south[col]
+  b <- raw_df_lab_check[col]
+  if (!all(a == b, na.rm = TRUE)) {
+    warning(paste("Values in column", col, "are different between the lab and the South database. Please check the values in this column."))
+    #print the values that are different as well as the rows where they are different
+    diff_rows <- which(a != b)
+    print(paste("Values in column", col, "are different in the following rows: "))
+    print(diff_rows)
+    print(paste(raw_df_full_db_south$plotID[diff_rows],raw_df_full_db_south$speciesID[diff_rows],raw_df_full_db_south$plant_nr[diff_rows]))
+    print(a[diff_rows,])
+    print(paste(raw_df_lab_check$plotID[diff_rows],raw_df_lab_check$speciesID[diff_rows],raw_df_lab_check$plant_nr[diff_rows]))
+    print(b[diff_rows,])
 }
 }
   
