@@ -32,3 +32,4 @@ Excel_to_csv.R
 #others
 .DS_Store
 .quarto
+.positai
