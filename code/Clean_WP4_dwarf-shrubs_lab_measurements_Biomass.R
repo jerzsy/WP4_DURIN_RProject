@@ -151,10 +151,13 @@ for (col in missing_cols_lab){
 #     by = c("plotID", "speciesID", "plant_nr")
 #   )
 
+
 # Change back E_SO_F_EN_1, EN species ID, plant_nr 2 and top_height_in_all == 21.1 to 2 as plant number
 raw_df_lab <- raw_df_lab %>%
   mutate(plant_nr = ifelse(plotID == "E_SO_F_EN_1" & speciesID == "EN" & plant_nr == 4 & top_height_in_all == 21.1, 2, plant_nr))
 
+raw_df_full_db <- raw_df_full_db %>%
+  mutate(plant_nr = ifelse(plotID == "E_SO_F_EN_1" & speciesID == "EN" & plant_nr == 4 & top_height_in_all == 21.1, 2, plant_nr))
 # Now merge both datasheets - taking Senja and Kautokeino sites only and adding them at the end of the lab database.
 ## Check for typos in siteIDs
 raw_df_full_db <- raw_df_full_db %>%
@@ -173,8 +176,29 @@ raw_df_full_db <- raw_df_full_db %>%
 
 raw_df_full_db_north <- raw_df_full_db[which(raw_df_full_db$siteID %in% c("SE", "KA")),]
 
+raw_df_full_db_south <- raw_df_full_db[which(raw_df_full_db$siteID %in% c("LY", "SO")),]
+
 ## Put first raw_df_lab then raw_df_full_db_north
 clean_df <- bind_rows(raw_df_lab, raw_df_full_db_north)
 
+# Check the difference between the South database and the lab (online) database
+# In case when entering data in the lab, some values were changed (which most of the time should not be the case)
+col_to_check <- setdiff(colnames(raw_df_lab),missing_cols_full_db)
+raw_df_lab_check <- raw_df_lab[which(raw_df_lab$plotID %in% raw_df_full_db_south$plotID),]  
+for (col in col_to_check){
+  #compare values in two columns with a function
+a <- raw_df_full_db_south[col]
+b <- raw_df_lab_check[col]
+if (!all(a == b, na.rm = TRUE)) {
+  warning(paste("Values in column", col, "are different between the lab and the South database. Please check the values in this column."))
+  #print the values that are different as well as the rows where they are different
+  diff_rows <- which(a != b)
+  print(paste("Values in column", col, "are different in the following rows: "))
+  print(diff_rows)
+  print(raw_df_full_db_south[diff_rows,])
+  print(raw_df_lab_check[diff_rows,])
+}
+}
+  
 # Write as CSV
 write_csv(clean_df,"raw_data/DURIN_WP4_raw_4Corners_field_biomass_trait_cover_dwarf_shrubs_2025_OFF_ALL.csv")
