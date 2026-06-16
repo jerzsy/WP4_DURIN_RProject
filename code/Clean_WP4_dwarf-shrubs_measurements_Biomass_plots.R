@@ -254,7 +254,7 @@ clean_df <- clean_df %>%
         plotID == "E_KA_F_VM_2" & speciesID == "VV" ~ 30,#to count in the lab!
         #plotID == "E_KA_F_VV_4" & speciesID == "EN" ~ ,#figuring out if this is actually VV_5_B!# later: Shouldn't this be "VV"? 
         #plotID == "E_KA_F_VV_5" & speciesID == "VV" ~ ,#figuring out if this is actually VV_5_A!
-        #plotID == "E_SO_F_CV_2" & speciesID == "VM" ~ ,#to count in the lab!
+        plotID == "E_SO_F_CV_2" & speciesID == "VM" ~ 22,#to count in the lab!#counted
         #plotID == "E_SO_F_CV_2" & speciesID == "CV" ~ ,#to count in the lab!
         
         plotID == "E_SE_O_EN_2" & speciesID == "VV" ~ 0,#was written 3 for the 3 replicates instead of 0
