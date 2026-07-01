@@ -170,28 +170,45 @@ make_flags <- function(cover, top_in, top_in_flowers, top_out, top_in_out, top_i
       (stem_diam_in > 20) | (stem_diam_out > 20) ~ "huge_stem_diameter",
       TRUE ~ NA_character_
     ),
+    
     #check for NA values in EN, VV, CV or VM height/stem length/stem diameter - except if full line is NA
-    case_when(
+    case_when(# check for missing value inside the plot
       species %in% c("EN","VV","CV","VM") &
         (is.na(top_in) | is.na(stem_len_in) | is.na(stem_diam_in)) &
-        !(is.na(top_in) & is.na(stem_len_in) & is.na(stem_diam_in)) ~ "missing_measured_value",
+        !(is.na(top_in) & is.na(stem_len_in) & is.na(stem_diam_in)) ~ "missing_measured_value_in",
       TRUE ~ NA_character_
     ),
     
     #check for NA values in EN, VV, CV or VM stem length/stem diameter when part of the individual is out
-    case_when(
+    case_when(#no stem length out while stem diameter out. If stem diameter out, there is a stem out. if height in only, missing value (SO, HO) 
+      # with maybe a mistake on diam out (on canopy)
+      # Case HI SI DO, see below.
       species %in% c("EN","VV","CV","VM") &
-        (is.na(stem_len_out) | is.na(stem_len_in_out)) &
-        !(is.na(stem_diam_out)) ~ "missing_measured_value_out",
+        (is.na(stem_len_out) & is.na(stem_len_in_out)) & (is.na(top_out) & is.na(top_in_out) & is.na(top_in_out_flowers)) &
+        !(is.na(stem_diam_out)) ~ "missing_measured_value_out_check_root", 
       TRUE ~ NA_character_
     ),
-    case_when(
+    case_when( # if stem out, can be either stem or canopy out or both so missing diameter out or height out.
+      #Case HI SO DI, see below.
       species %in% c("EN","VV","CV","VM") &
-        !(is.na(stem_len_out) | is.na(stem_len_in_out)) &
-        (is.na(stem_diam_out)) ~ "missing_measured_value_out",
+        (!(is.na(stem_len_out)) | !(is.na(stem_len_in_out))) &
+        (is.na(stem_diam_out) & is.na(top_out) & is.na(top_in_out) & is.na(top_in_out_flowers)) ~ "missing_measured_value_out",
       TRUE ~ NA_character_
     ),
-    # It's hard or not possible to check for missing height out because you could have stem length out without canopy out.
+    case_when( # if diam out and canopy (H) out but no stem out (to root): either missing value (SO) or measured diam on canopy
+      #Case HO SI DO, see below.
+      species %in% c("EN","VV","CV","VM") &
+        !(is.na(stem_diam_out)) & !(is.na(top_out) & is.na(top_in_out) & is.na(top_in_out_flowers)) &
+        (is.na(stem_len_out) & is.na(stem_len_in_out)) ~ "missing_measured_value_out_or_MISTAKE_ON_DIAM_OUT",
+      TRUE ~ NA_character_
+    ),
+    case_when( # if diam out and canopy (H) out and stem out (tip to root): maybe they measured diam on canopy
+      #Case HO SO DO, see below.
+      species %in% c("EN","VV","CV","VM") &
+        !(is.na(stem_diam_out)) & !(is.na(top_out) & is.na(top_in_out) & is.na(top_in_out_flowers)) &
+        (!(is.na(stem_len_out)) | !(is.na(stem_len_in_out))) ~ "MAYBE_MISTAKE_ON_DIAM_OUT_TO_CHECK",
+      TRUE ~ NA_character_
+    ),
     
     # Check for top_height values equal to 0. It is up to the data user to decide what to do with these values. May be a bit suspicious for TOP height.
     case_when(
@@ -206,7 +223,6 @@ make_flags <- function(cover, top_in, top_in_flowers, top_out, top_in_out, top_i
   if (length(flags) == 0) "OK" else flags
 }
 #-------------------------------------------------------------------#
-
 
 ## Apply the flagging function to the dataset
 clean_df <- raw_df %>%
@@ -223,6 +239,35 @@ clean_df <- raw_df %>%
 
 ## Manual flags
 #E_SE_F_CV_2 CV 3 probably no canopy in - delete?
+
+# Check for North: I think they measured out all the time (or at least sometimes), even when not rooted outside. At least for some.
+# So (H/S/D= height/stem length/diameter; I/O: inside/inside+outside):
+# HI SI DI - if no mistake in the field (no missing value), this case is fine.
+# HI SI DO - this case should not exist - must be a missing value (logically SO, maybe HO in the North) - check root in/out + missing value in lab
+# HI SO DI - this case should not exist - must be a missing value (either DO or HO) - check missing value
+# HI SO DO - if no mistake in the field (no missing value), this case is fine.
+# HO SI DI - if longest stem is in the plot, this case is fine.
+# HO SI DO - this case should not exist - must be a missing value (SO) or they measured diameter on canopy out - check root in/out OR missing value in lab
+# HO SO DI - if no mistake in the field (no missing value), this case is fine.
+# HO SO DO - if individual rooted out, it's fine, if rooted in, no - check root in/out in lab.
+# To be checked: HI SI DO; HI SO DI?; HO SI DO; HO SO DO
+
+## Export a table with bagID for flags "missing_measured_value_out_check_root"; "missing_measured_value_out"; "missing_measured_value_out_or_MISTAKE_ON_DIAM_OUT";
+# "MAYBE_MISTAKE_ON_DIAM_OUT_TO_CHECK"
+
+target_flags <- c(
+  "missing_measured_value_out_check_root",
+  "missing_measured_value_out",
+  "missing_measured_value_out_or_MISTAKE_ON_DIAM_OUT",
+  "MAYBE_MISTAKE_ON_DIAM_OUT_TO_CHECK"
+)
+
+flag_export <- clean_df %>%
+  tidyr::unnest(flags) %>%
+  dplyr::filter(flags %in% target_flags) %>%
+  dplyr::select(plotID, speciesID, plant_nr, flags)
+
+write.csv(flag_export, "clean_data/flag_report_bagID.csv", row.names = FALSE)
 
 # 4. Adding missing number of harvested individuals based on information found on the biomass bag
 # For this, I checked every NA in number_harvested_indiv_without_3_rep - I replace with what I found on the bag
