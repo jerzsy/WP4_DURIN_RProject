@@ -239,6 +239,7 @@ clean_df <- raw_df %>%
 
 ## Manual flags
 #E_SE_F_CV_2 CV 3 probably no canopy in - delete?
+#E_SO_F_CV_2_VM_2 look like there are two different individuals - should this be removed?
 
 # Check for North: I think they measured out all the time (or at least sometimes), even when not rooted outside. At least for some.
 # So (H/S/D= height/stem length/diameter; I/O: inside/inside+outside):
@@ -269,6 +270,66 @@ flag_export <- clean_df %>%
 
 write.csv(flag_export, "clean_data/flag_report_bagID.csv", row.names = FALSE)
 
+#Now, add manual flags for the root in/root out. With the flag_report_bagID, I came back to the lab with Maike and we checked every bags to identify
+#if it was rooted in or out. So now, I will add a flag for the one that are actually rooted in or likely in, or likely out.
+#I don't write the ones that were identified as out, as it is as it should be. See fieldsheet for more details.
+#Note, when we checked, some where already separated for leaves and stem + some other already weighed (cut, without leaves)
+# I will also manually select the diameter in for these ones that actually have a diameter in and out measured.   
+#E_SE_O_EN_3_EN_2 root_likely_out #pic #thickest stem out, connects to stem from inside
+#E_SE_O_CV_2_EN_1 root_in 
+#E_SE_O_CV_2_EN_2 root_in
+#E_SE_O_VM_5_EN_3 root_in #only roots inside
+#E_SE_F_EN_2_VM_3 root_in #pic
+#E_SE_F_EN_2_EN_1 root_in #pic #thickest stem in
+#E_SE_F_EN_2_EN_3 root_likely_out #pic #hairy roots only on the outside, thickes stem on the outside
+#E_SE_F_EN_3_EN_2 unclear_where_rooted #pic #hairy roots only out
+#E_SE_F_EN_5_EN_1 root_likely_out #pic #thickest stem out, connects to stem from inside
+#E_SE_F_CV_3_EN_1 root_likely_out #pic #hairroots only on the outside, thickest stem on the outside
+#E_SE_F_CV_3_EN_2 root_likely_in #pic #hairroots only inside, thickest stem inside
+#E_SE_F_VM_2_VM_1 root_likely_in #pic in VM_cut pics
+#E_SE_F_VV_5_EN_2 root_likely_out #pic #hairroots only on the outside, thickest stem on the outside
+#E_KA_O_EN_1_EN_2 unclear_where_rooted #pic #hairroots in and out, thickest stem in
+#E_KA_O_EN_1_EN_3 root_likely_out #pic #thickest stem out, connects to stem in which seems close to canopy
+#E_KA_O_EN_2_EN_2 root_likely_in #pic #thickest stem in, connects to stem out
+#E_KA_O_VV_5_EN_2 root_likely_out #big stem out #pic
+#E_KA_F_EN_2_VM_1 missing_diam_out
+#E_KA_F_EN_3_EN_3 root_likely_out #pic #thickest stem out, connects to stem IN which seems closer to canopy
+#E_KA_F_VV_4_EN_2 root_likely_out #VV_5_B in lab #pic
+#E_KA_F_VV_5_EN_2 root_in #VV_5_A in lab #dead leaves IN only #pic
+#E_KA_F_VV_5_EN_3 root in #VV_5_A in lab #no leaves in #pic
+#E_KA_O_..._EN_1 root_out #KA_O_VM_2_EN_1 in lab
+
+clean_df <- clean_df %>% #CHECK HERE #ROWWISE?
+  rowwise() %>%
+  mutate(
+    flags = case_when(
+      plotID == "E_SE_O_EN_3" & speciesID == "EN" & plant_nr == 2 ~ list(c(flags, "root_likely_out")),
+      plotID == "E_SE_O_CV_2" & speciesID == "EN" & plant_nr == 1 ~ list(c(flags, "root_in")),
+      plotID == "E_SE_O_CV_2" & speciesID == "EN" & plant_nr == 2 ~ list(c(flags, "root_in")),
+      plotID == "E_SE_O_VM_5" & speciesID == "EN" & plant_nr == 3 ~ list(c(flags, "root_in")),
+      plotID == "E_SE_F_EN_2" & speciesID == "VM" & plant_nr == 3 ~ list(c(flags, "root_in")),
+      plotID == "E_SE_F_EN_2" & speciesID == "EN" & plant_nr == 1 ~ list(c(flags, "root_in")),
+      plotID == "E_SE_F_EN_2" & speciesID == "EN" & plant_nr == 3 ~ list(c(flags, "root_likely_out")),
+      plotID == "E_SE_F_EN_3" & speciesID == "EN" & plant_nr == 2 ~ list(c(flags, "unclear_where_rooted")),
+      plotID == "E_SE_F_EN_5" & speciesID == "EN" & plant_nr == 1 ~ list(c(flags, "root_likely_out")),
+      plotID == "E_SE_F_CV_3" & speciesID == "EN" & plant_nr == 1 ~ list(c(flags, "root_likely_out")),
+      plotID == "E_SE_F_CV_3" & speciesID == "EN" & plant_nr == 2 ~ list(c(flags, "root_likely_in")),
+      plotID == "E_SE_F_VM_2" & speciesID == "VM" & plant_nr == 1 ~ list(c(flags, "root_likely_in")),
+      plotID == "E_SE_F_VV_5" & speciesID == "EN" & plant_nr == 2 ~ list(c(flags, "root_likely_out")),
+      plotID == "E_KA_O_EN_1" & speciesID == "EN" & plant_nr == 2 ~ list(c(flags, "unclear_where_rooted")),
+      plotID == "E_KA_O_EN_1" & speciesID == "EN" & plant_nr == 3 ~ list(c(flags, "root_likely_out")),
+      plotID == "E_KA_O_EN_2" & speciesID == "EN" & plant_nr == 2 ~ list(c(flags, "root_likely_in")),
+      plotID == "E_KA_O_VV_5" & speciesID == "EN" & plant_nr == 2 ~ list(c(flags, "root_likely_out")),
+      plotID == "E_KA_F_EN_2" & speciesID == "VM" & plant_nr == 1 ~ list(c(flags, "missing_diam_out")),
+      plotID == "E_KA_F_EN_3" & speciesID == "EN" & plant_nr == 3 ~ list(c(flags, "root_likely_out")),
+      plotID == "E_KA_F_VV_4" & speciesID == "EN" & plant_nr == 2 ~ list(c(flags, "root_likely_out")),
+      plotID == "E_KA_F_VV_5" & speciesID == "EN" & plant_nr == 2 ~ list(c(flags, "root_in")),
+      plotID == "E_KA_F_VV_5" & speciesID == "EN" & plant_nr == 3 ~ list(c(flags, "root_in")),
+      TRUE ~ list(flags)
+    )
+  )%>%
+  ungroup()
+
 # 4. Adding missing number of harvested individuals based on information found on the biomass bag
 # For this, I checked every NA in number_harvested_indiv_without_3_rep - I replace with what I found on the bag
 # in the lab, or, if there is no "all" bag, I put 0 instead as there is no individuals harvested in addition to
@@ -296,7 +357,7 @@ clean_df <- clean_df %>%
         plotID == "E_KA_F_VM_4" & speciesID == "EN" ~ 0, #NA was written instead of 0 (only 1 replicate)
         
         plotID == "E_SE_F_CV_2" & speciesID == "CV" ~ 2,#1 in all bag (or maybe two as there are two different branches but seemed to be from the same individiual) + 1 unknown bag ; to count in the lab!
-        plotID == "E_KA_F_VM_2" & speciesID == "VV" ~ 30,#to count in the lab!
+        plotID == "E_KA_F_VM_2" & speciesID == "VV" ~ 30,#to count in the lab!#counted
         #plotID == "E_KA_F_VV_4" & speciesID == "EN" ~ ,#figuring out if this is actually VV_5_B!# later: Shouldn't this be "VV"? 
         #plotID == "E_KA_F_VV_5" & speciesID == "VV" ~ ,#figuring out if this is actually VV_5_A!
         plotID == "E_SO_F_CV_2" & speciesID == "VM" ~ 22,#to count in the lab!#counted
@@ -304,7 +365,7 @@ clean_df <- clean_df %>%
         
         plotID == "E_SE_O_EN_2" & speciesID == "VV" ~ 0,#was written 3 for the 3 replicates instead of 0
         plotID == "E_KA_O_VV_5" & speciesID == "EN" ~ 0,#was written 3 for the 3 replicates instead of likely 0 as we could not find an "all" bag.
-        plotID == "E_SE_F_CV_3" & speciesID == "VV" ~ 0,#was written 2 for the 2 replicates instead of likely 0 (no extra bags).
+        plotID == "E_SE_F_CV_3" & speciesID == "VV" ~ 0,#was written 2 for the 2 replicates instead of likely 0 (no extra all bags).
         
         TRUE ~ number_harvested_indiv_without_3_rep
       )
@@ -336,6 +397,7 @@ clean_df <- clean_df %>%
 # Or both in and outside of the plot.
 # This means, if there is a stem length in + out, this is the full length of the individual; otherwise it's the stem length in.
 # This means, if there is a stem diameter out, this is the full diameter of the individual; otherwise it's the stem diameter in. 
+# Except for the individuals from the North that have been identified in the lab as root_in
 clean_df <- clean_df %>%
   mutate(
     full_indiv_stem_length = case_when(
@@ -349,6 +411,25 @@ clean_df <- clean_df %>%
       TRUE ~ NA_real_
     )
   )
+
+#Exceptions for individuals in the north rooted in with stem diameter out and in measured
+clean_df <- clean_df %>% #CHECK HERE
+  mutate(
+    full_indiv_stem_diameter = case_when(
+      plotID == "E_SE_O_CV_2" & speciesID == "EN" & plant_nr == 1 ~ stem_diam_in,
+      plotID == "E_SE_O_CV_2" & speciesID == "EN" & plant_nr == 2 ~ stem_diam_in,
+      plotID == "E_SE_O_VM_5" & speciesID == "EN" & plant_nr == 3 ~ stem_diam_in,
+      plotID == "E_SE_F_EN_2" & speciesID == "VM" & plant_nr == 3 ~ stem_diam_in,
+      plotID == "E_SE_F_EN_2" & speciesID == "EN" & plant_nr == 1 ~ stem_diam_in,
+      plotID == "E_SE_F_CV_3" & speciesID == "EN" & plant_nr == 2 ~ stem_diam_in,
+      plotID == "E_SE_F_VM_2" & speciesID == "VM" & plant_nr == 1 ~ stem_diam_in,
+      plotID == "E_KA_O_EN_2" & speciesID == "EN" & plant_nr == 2 ~ stem_diam_in,
+      plotID == "E_KA_F_VV_5" & speciesID == "EN" & plant_nr == 2 ~ stem_diam_in,
+      plotID == "E_KA_F_VV_5" & speciesID == "EN" & plant_nr == 3 ~ stem_diam_in,
+      TRUE ~ full_indiv_stem_diameter
+    )
+  )
+
 
 # Do the same for vegetation height. However, for the moment, it is not possible for the North. Indeed, they measured the 
 # vegetation height only outside the plot when partially out, and not on the full individual. 

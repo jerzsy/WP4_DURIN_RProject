@@ -1,5 +1,5 @@
 # Open and clean database for measurements in the lab in the South biomass plots and merge with North plots database (field only)
-# --- Vegetation measurements on DWARF-SHRUBS in Extra WP4 biomass removal plots - South plots ---- #
+# --- Vegetation measurements on DWARF-SHRUBS in Extra WP4 biomass removal plots - North & South plots ---- #
 # Install and load packages
 packages <- c("readxl", "tidyverse", "janitor")
 new_packages <- packages[!(packages %in% installed.packages()[,"Package"])]
