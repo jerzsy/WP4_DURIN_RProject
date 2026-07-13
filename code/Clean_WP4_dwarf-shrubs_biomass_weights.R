@@ -1,6 +1,5 @@
 ######################################################
 ###### Script to analyse WP4 DURIN Biomass data ######
-#######> rm(list=ls())###########
 ######################################################
 # --- Biomass weighing measurements ---- #
 
@@ -79,6 +78,7 @@ col_spec <- cols(
   biomass_brown_stem_out = col_double(),
   
   biomass_dust_stem = col_double(),
+  #update with biomass_dust_stem_in and biomass_dust_stem_out
   
   biomass_green_stem_in_1 = col_double(),
   biomass_green_stem_in_2 = col_double(),
@@ -156,7 +156,7 @@ biomass_raw <- biomass_raw %>%
 
 #Delete columns with individual part weights inside the bag
 biomass_raw <- biomass_raw %>%
-  select(-starts_with("biomass_brown_stem_in_"), -starts_with("biomass_green_stem_in_"), -starts_with("biomass_alive_leaves_in_"))  
+  select(-starts_with("biomass_brown_stem_in_"), -starts_with("biomass_green_stem_in_"), -starts_with("biomass_alive_leaves_in_"), -starts_with("biomass_maybe_dead_leaves_in_"))  
 
 # Calculate the sum of in and out part (necessary for individuals weight), and add a column for that
 biomass_raw <- biomass_raw %>%
@@ -178,7 +178,7 @@ biomass_raw <- biomass_raw %>%
     ),
     biomass_likely_alive_leaves_total = biomass_likely_alive_leaves_in, # no OUT column 
     biomass_likely_alive_top_leaves_total = biomass_likely_alive_top_leaves_in, # no OUT column
-    biomass_maybe_alive_leaves_total = ifelse( #here
+    biomass_maybe_alive_leaves_total = ifelse(
       is.na(biomass_maybe_alive_leaves_in) & is.na(biomass_maybe_alive_leaves_out),
       NA,
       rowSums(cbind(biomass_maybe_alive_leaves_in, biomass_maybe_alive_leaves_out), na.rm = TRUE)
@@ -204,8 +204,11 @@ biomass_raw <- biomass_raw %>%
       is.na(biomass_dust_in) & is.na(biomass_dust_out),
       NA,
       rowSums(cbind(biomass_dust_in, biomass_dust_out), na.rm = TRUE)
+    )
+    #update with biomass_dust_stem_in and biomass_dust_stem_out
+  
   )
-  )
+
 #Add a column for all the leaves (alive and dead) and all the stems (green and brown)
 biomass_raw <- biomass_raw %>%
   mutate(biomass_leaves_total = rowSums(cbind(biomass_alive_leaves_total,biomass_likely_alive_leaves_total,biomass_likely_alive_top_leaves_total,
@@ -214,12 +217,16 @@ biomass_raw <- biomass_raw %>%
 biomass_raw <- biomass_raw %>%
   mutate(biomass_stem_total = rowSums(cbind(biomass_brown_stem_total,biomass_green_stem_total), na.rm = TRUE))
 
-#Move columns before comments
+#Delete unnecessary columns
 clean_data <- biomass_raw %>%
+  select(-"brown_stems_in",-"brown_stems_out",-"date_red_leaves",-"recorder_red_leaves",-"pic_VM_red_leaves")
+
+#Move columns before comments
+clean_data <- clean_data %>%
   select(-comment_sep, -comment_weighing, -DO_NOT_EDIT_comment_after, everything(), comment_sep, comment_weighing, DO_NOT_EDIT_comment_after)
 
 # Write as CSV
-write_csv(clean_data,"clean_data/DURIN_WP_4_clean_4Corners_lab_biomass_weighing_dwarf_shrubs_2025.csv")
+write_csv(clean_data,"clean_data/DURIN_WP4_clean_4Corners_lab_biomass_weight_dwarf_shrubs_2025.csv")
 
 #####################################################################################
 #Analysis
@@ -251,7 +258,7 @@ clean_data_ratio$coast_inland <- factor((clean_data_ratio$coast_inland),
 biomass_vv_weighed <- clean_data_ratio %>%
   filter(SpeciesID == "VV") %>%
   filter(weighed_status == 1) %>%
-  filter(IndividualID %in% c("VV_1", "VV_2", "VV_3"))
+  filter(IndividualID %in% c("VV_1", "VV_2", "VV_3", "VV_4"))#sometimes, there are four replicates
 
 # Define colour palette if using full name versions
 Habitat <- c("Forested" = "#083508", "Open" = "#589758")
@@ -261,7 +268,7 @@ Species_Fruit <- c("CV" = "#DF697E",
                    "VV" = "#D93137")
 
 #Plot leaf_stem_ratio for the 4 sites and habitat
-
+#OUTLIERS ARE E_LY_O_EN_3 VV_3 and E_LY_O_EN_3 VV_4 TO BE CHECKED
 ggplot(biomass_vv_weighed,
        aes(x = habitat,
            y = leaf_stem_ratio,
@@ -302,6 +309,88 @@ ggplot(biomass_vv_weighed,
   
   theme_bw()
 
+#Plot leaves total
+ggplot(biomass_vv_weighed,
+       aes(x = habitat,
+           y = biomass_leaves_total,
+           color = habitat,
+           fill = habitat)) +
+  
+  geom_point(
+    position = position_jitterdodge(
+      jitter.width = 0.15,
+      dodge.width = 0.6
+    ),
+    alpha = 0.4
+  ) +
+  
+  stat_summary(
+    fun = mean,
+    geom = "point",
+    size = 3,
+    position = position_dodge(width = 0.6)
+  ) +
+  
+  stat_summary(
+    fun.data = mean_se,
+    geom = "errorbar",
+    width = 0.15,
+    position = position_dodge(width = 0.6)
+  ) +
+  scale_color_manual(values = Habitat) +
+  scale_fill_manual(values = Habitat) +
+  facet_grid(north_south ~ coast_inland) +
+  
+  labs(
+    x = "Habitat",
+    y = "Biomass leaves total (g)",
+    color = "Habitat",
+    fill = "Habitat"
+  ) +
+  
+  theme_bw()
+
+#Plot stems total
+ggplot(biomass_vv_weighed,
+       aes(x = habitat,
+           y = biomass_stem_total,
+           color = habitat,
+           fill = habitat)) +
+  
+  geom_point(
+    position = position_jitterdodge(
+      jitter.width = 0.15,
+      dodge.width = 0.6
+    ),
+    alpha = 0.4
+  ) +
+  
+  stat_summary(
+    fun = mean,
+    geom = "point",
+    size = 3,
+    position = position_dodge(width = 0.6)
+  ) +
+  
+  stat_summary(
+    fun.data = mean_se,
+    geom = "errorbar",
+    width = 0.15,
+    position = position_dodge(width = 0.6)
+  ) +
+  scale_color_manual(values = Habitat) +
+  scale_fill_manual(values = Habitat) +
+  facet_grid(north_south ~ coast_inland) +
+  
+  labs(
+    x = "Habitat",
+    y = "Biomass stems total (g)",
+    color = "Habitat",
+    fill = "Habitat"
+  ) +
+  
+  theme_bw()
+
 #------------------------#
 
 # North sites, VV species
@@ -309,7 +398,7 @@ biomass_vv_north <- clean_data_ratio %>%
   filter(siteID == "KA" | siteID == "SE") %>%
   filter(SpeciesID == "VV") %>%
   filter(weighed_status == 1) %>%
-  filter(IndividualID %in% c("VV_1", "VV_2", "VV_3"))
+  filter(IndividualID %in% c("VV_1", "VV_2", "VV_3", "VV_4"))
 
 # 4corners, VV species
 # filter on plotID that contains VV
@@ -317,7 +406,7 @@ biomass_vv_4_corners<- clean_data_ratio %>%
   filter(SpeciesID == "VV") %>%
   filter(weighed_status == 1) %>%
 filter(grepl("VV", PlotID)) %>%
-  filter(IndividualID %in% c("VV_1", "VV_2", "VV_3"))
+  filter(IndividualID %in% c("VV_1", "VV_2", "VV_3", "VV_4"))
 
 #4 corners, VV_VV plots
 biomass_vv_4corners <- clean_data_ratio %>%
@@ -325,7 +414,7 @@ biomass_vv_4corners <- clean_data_ratio %>%
   filter(weighed_status == 1) %>%
   # filter on plotID that contains VV
   filter(grepl("VV", PlotID)) %>%
-  filter(IndividualID %in% c("VV_1", "VV_2", "VV_3"))
+  filter(IndividualID %in% c("VV_1", "VV_2", "VV_3", "VV_4"))
 
 # Define colour palette if using full name versions
 Habitat <- c("Forested" = "#083508", "Open" = "#589758")
@@ -380,10 +469,10 @@ biomass_weighed$coast_inland <- factor((biomass_weighed$coast_inland),
 # filter on individuals
 biomass_weighed_individuals <- biomass_weighed %>%
   filter(IndividualID %in% c(
-    "VV_1", "VV_2", "VV_3",
-    "EN_1", "EN_2", "EN_3",
-    "CV_1", "CV_2", "CV_3",
-    "VM_1", "VM_2", "VM_3"
+    "VV_1", "VV_2", "VV_3", "VV_4",
+    "EN_1", "EN_2", "EN_3", "EN_4",
+    "CV_1", "CV_2", "CV_3", "CV_4",
+    "VM_1", "VM_2", "VM_3", "VM_4"
   ))
 
 # #Sum of all the leaves insite the plot
@@ -423,7 +512,7 @@ biomass_weighed_individuals <- biomass_weighed %>%
 biomass_EN_weighed <- biomass_weighed %>%
   filter(SpeciesID == "EN") %>%
   filter(weighed_status == 1) %>%
-  filter(IndividualID %in% c("EN_1", "EN_2", "EN_3"))
+  filter(IndividualID %in% c("EN_1", "EN_2", "EN_3", "EN_4"))
 
 #Calculate the ratio of leaf to stem for EN individuals
 biomass_EN_weighed <- biomass_EN_weighed %>%
@@ -436,7 +525,7 @@ biomass_EN_VV_KA <- biomass_weighed %>%
   filter(grepl("EN", PlotID)) %>%
   filter(SpeciesID %in% c("EN", "VV")) %>%
   filter(weighed_status == 1) %>%
-  filter(IndividualID %in% c("EN_1", "EN_2", "EN_3", "VV_1", "VV_2", "VV_3"))
+  filter(IndividualID %in% c("EN_1", "EN_2", "EN_3", "EN_4", "VV_1", "VV_2", "VV_3", "VV_4"))
 
 #calculate the total of the leaves (alive + likely alive) for EN and VV individuals in the EN plots in Kautokeino
 biomass_EN_VV_KA <- biomass_EN_VV_KA %>%
@@ -472,7 +561,7 @@ biomass_VV_KA_SE_individuals <- biomass_VV_KA_SE %>%
   filter(siteID == "KA" | siteID == "SE") %>%
   filter(SpeciesID == "VV") %>%
   filter(weighed_status == 1) %>%
-  filter(IndividualID %in% c("VV_1", "VV_2", "VV_3"))
+  filter(IndividualID %in% c("VV_1", "VV_2", "VV_3", "VV_4"))
 
 #filter for VV in the north sites
 biomass_VV_KA_SE <- biomass_weighed %>%
