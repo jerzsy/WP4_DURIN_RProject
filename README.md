@@ -12,6 +12,8 @@ The data are kept in separate folders named *raw\_data* and *clean\_data*, while
 - The raw data are the original and untouched files usually .csv or .txt formatted files.
 - The clean data is often produced from the raw data using code and stored automatically.
 
+They are not shared through GitHub, but only accessible on the project's OSF. 
+
 JR also added separate folders for *data_descr* and *data_dic* that are meant for finalized data description tables and data dictionaries for each dataset that are cleaned as part of this R project. See the data documentation section below for more information.
 
 In addition, there is a .gitignore text file, which tells git all the files that should be ignored.
@@ -22,7 +24,6 @@ We also recommend to use a user licence.
 
 ### Data documentation
 
-We strongly recommend to document the data, which is best practice.
 The *code* folder contains a subfolder *data\_dic* with files scripts to produce a data dictionary.
 
 The *data\_description.xlsx* file contains basic information about each variable: description, unit and how it was collected.
