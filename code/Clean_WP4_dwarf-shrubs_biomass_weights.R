@@ -1,7 +1,7 @@
 ######################################################
-###### Script to analyse WP4 DURIN Biomass data ######
+##### Script to clean WP4 DURIN Biomass weights ######
 ######################################################
-# --- Biomass weighing measurements ---- #
+# ---- Biomass weight measurements ---- #
 
 # Install and load packages
 packages <- c("tidyverse") #add any other packages that you may need to this list
@@ -27,7 +27,8 @@ col_names <- c('recorder_sep','date_sep','time_begin_sep','time_end_sep','site_n
                'date_red_leaves','recorder_red_leaves','pic_VM_red_leaves',
                'sep_status','dried_status','recorder_weighing','date_weighing','date_weighing_2','weighed_status',
                'biomass_brown_stem_in_1', 'biomass_brown_stem_in_2','biomass_brown_stem_in_3','biomass_brown_stem_in_4',
-               'biomass_brown_stem_out','biomass_dust_stem',
+               'biomass_brown_stem_out',
+               'biomass_dust_stem_TOBECHECKED','biomass_dust_stem_in','biomass_dust_stem_out',
                'biomass_green_stem_in_1','biomass_green_stem_in_2','biomass_green_stem_in_3','biomass_green_stem_out',
                'biomass_leaves_all_EN_CV',
                'biomass_alive_leaves_in_1','biomass_alive_leaves_in_2','biomass_alive_leaves_in_3',
@@ -77,7 +78,9 @@ col_spec <- cols(
   
   biomass_brown_stem_out = col_double(),
   
-  biomass_dust_stem = col_double(),
+  biomass_dust_stem_TOBECHECKED = col_double(),
+  biomass_dust_stem_in = col_double(),
+  biomass_dust_stem_out = col_double(),
   #update with biomass_dust_stem_in and biomass_dust_stem_out
   
   biomass_green_stem_in_1 = col_double(),
@@ -125,7 +128,7 @@ col_spec <- cols(
 )
 
 # Read the file into a tibble
-biomass_raw <- read_csv(file_path, col_types = col_spec) #I exported the file as a csv. If you want to export (from Drive) and read it as an excel file, use read_excel() from the readxl package
+biomass_raw <- read_csv(file_path, col_types = col_spec, na = c("NA","")) #I exported the file as a csv. If you want to export (from Drive) and read it as an excel file, use read_excel() from the readxl package
 
 ####################################################################################
 ###################### MANDATORY DATA PROCESSING STEPS #############################
@@ -133,28 +136,39 @@ biomass_raw <- read_csv(file_path, col_types = col_spec) #I exported the file as
 # Calculate sum of all parts inside the bag (value 1, value 2, value 3, etc) #To update if more
 biomass_raw <- biomass_raw %>%
   mutate(
-    biomass_brown_stem_in = rowSums(
-      select(., starts_with("biomass_brown_stem_in_")),
-      na.rm = TRUE
-    ),
-    
-    biomass_green_stem_in = rowSums(
+    biomass_brown_stem_in = if_else(
+      if_all(starts_with("biomass_brown_stem_in_"), is.na),
+      NA_real_,
+      rowSums(
+        select(., starts_with("biomass_brown_stem_in_")),
+        na.rm = TRUE)
+      ),
+    biomass_green_stem_in = if_else(
+      if_all(starts_with("biomass_green_stem_in_"), is.na),
+      NA_real_,
+      rowSums(
       select(., starts_with("biomass_green_stem_in_")),
-      na.rm = TRUE
+      na.rm = TRUE)
     ),
     
-    biomass_alive_leaves_in = rowSums(
-      select(., starts_with("biomass_alive_leaves_in_")),
-      na.rm = TRUE
+    biomass_alive_leaves_in = if_else(
+      if_all(starts_with("biomass_alive_leaves_in_"), is.na),
+      NA_real_,
+      rowSums(
+        select(., starts_with("biomass_alive_leaves_in_")),
+        na.rm = TRUE)
     ),
-      biomass_maybe_dead_leaves_in = rowSums(
-        select(., starts_with("biomass_maybe_dead_leaves_in_")),
-        na.rm = TRUE
-    )
+      biomass_maybe_dead_leaves_in = if_else(
+        if_all(starts_with("biomass_maybe_dead_leaves_in_"), is.na),
+        NA_real_,
+        rowSums(
+          select(., starts_with("biomass_maybe_dead_leaves_in_")),
+          na.rm = TRUE)
+      )
   )
 
 
-#Delete columns with individual part weights inside the bag
+# Delete columns with individual part weights inside the bag
 biomass_raw <- biomass_raw %>%
   select(-starts_with("biomass_brown_stem_in_"), -starts_with("biomass_green_stem_in_"), -starts_with("biomass_alive_leaves_in_"), -starts_with("biomass_maybe_dead_leaves_in_"))  
 
@@ -209,13 +223,39 @@ biomass_raw <- biomass_raw %>%
   
   )
 
-#Add a column for all the leaves (alive and dead) and all the stems (green and brown)
+# Add a column for all the leaves (alive and dead) and all the stems (green and brown)
+cols_leaves <- c('biomass_alive_leaves_total','biomass_likely_alive_leaves_total','biomass_likely_alive_top_leaves_total',
+                'biomass_maybe_alive_leaves_total','biomass_dead_leaves_total','biomass_likely_dead_leaves_total',
+                'biomass_maybe_dead_leaves_total','biomass_maybe_dead_top_leaves_total','petiole')
 biomass_raw <- biomass_raw %>%
-  mutate(biomass_leaves_total = rowSums(cbind(biomass_alive_leaves_total,biomass_likely_alive_leaves_total,biomass_likely_alive_top_leaves_total,
-                                              biomass_maybe_alive_leaves_total,biomass_dead_leaves_total,biomass_likely_dead_leaves_total,
-                                              biomass_maybe_dead_leaves_total,biomass_maybe_dead_top_leaves_total,petiole), na.rm = TRUE))
+  mutate(
+    biomass_leaves_total = if_else(
+      if_all(all_of(cols_leaves), is.na),
+      NA_real_,
+      rowSums(across(all_of(cols_leaves)), na.rm = TRUE)
+    ),
+    biomass_stem_total = if_else(
+      is.na(biomass_brown_stem_total) & is.na(biomass_green_stem_total),
+      NA_real_,
+      rowSums(cbind(biomass_brown_stem_total, biomass_green_stem_total), na.rm = TRUE)
+    )
+  )
+
+# Add flag for "no bag found" and "two individuals" in replicate bags
+# no bag found: E_SE_O_EN_2_VV_ALL; E_KA_F_EN_2_VM_ALL; E_SE_O_EN_4_VM_ALL; E_KA_O_VV_5_EN_ALL; E_LY_O_CV_2_VV_3 (CV found in bag instead)
+# E_SO_F_CV_2_VM_2 - looks like two individuals, remove? 
+# TO BE CONTINUED with CV and EN being processed. 
+
 biomass_raw <- biomass_raw %>%
-  mutate(biomass_stem_total = rowSums(cbind(biomass_brown_stem_total,biomass_green_stem_total), na.rm = TRUE))
+  mutate(
+    flags_weight = case_when(
+    Bag_code == "E_SE_O_EN_2_VV_ALL" ~ "is_there_an_all_bag", #maybe only 3 replicates and that's a mistake in the fieldsheet (3 was written)
+    Bag_code == "E_KA_F_EN_2_VM_ALL" ~ "is_there_an_all_bag", #maybe only 3 replicates and that's a mistake in the fieldsheet (NA was written)
+    Bag_code == "E_SE_O_EN_4_VM_ALL" ~ "is_there_an_all_bag", #maybe only 3 replicates and that's a mistake in the fieldsheet (NA was written)
+    Bag_code == "E_KA_O_VV_5_EN_ALL" ~ "is_there_an_all_bag", #maybe only 3 replicates and that's a mistake in the fieldsheet (3 was written)
+    Bag_code == "E_LY_O_CV_2_VV_3" ~ "no_bag_found",
+    Bag_code == "E_SO_F_CV_2_VM_2" ~ "maybe_two_individuals",
+  ))
 
 #Delete unnecessary columns
 clean_data <- biomass_raw %>%
@@ -223,7 +263,7 @@ clean_data <- biomass_raw %>%
 
 #Move columns before comments
 clean_data <- clean_data %>%
-  select(-comment_sep, -comment_weighing, -DO_NOT_EDIT_comment_after, everything(), comment_sep, comment_weighing, DO_NOT_EDIT_comment_after)
+  select(-flags_weight,-comment_sep, -comment_weighing, -DO_NOT_EDIT_comment_after, everything(), comment_sep, comment_weighing, DO_NOT_EDIT_comment_after, flags_weight)
 
 # Write as CSV
 write_csv(clean_data,"clean_data/DURIN_WP4_clean_4Corners_lab_biomass_weight_dwarf_shrubs_2025.csv")
