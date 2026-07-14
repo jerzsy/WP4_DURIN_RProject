@@ -299,6 +299,8 @@ write.csv(flag_export, "clean_data/flag_report_bagID.csv", row.names = FALSE)
 #E_KA_F_VV_5_EN_3 root in #VV_5_A in lab #no leaves in #pic
 #E_KA_O_..._EN_1 root_out #KA_O_VM_2_EN_1 in lab
 
+#TO BE CONTINUED FOR CV
+
 clean_df <- clean_df %>% #CHECK HERE #ROWWISE?
   rowwise() %>%
   mutate(
@@ -358,7 +360,7 @@ clean_df <- clean_df %>%
         
         plotID == "E_SE_F_CV_2" & speciesID == "CV" ~ 2,#1 in all bag (or maybe two as there are two different branches but seemed to be from the same individiual) + 1 unknown bag ; to count in the lab!
         plotID == "E_KA_F_VM_2" & speciesID == "VV" ~ 30,#to count in the lab!#counted
-        #plotID == "E_KA_F_VV_4" & speciesID == "EN" ~ ,#figuring out if this is actually VV_5_B!# later: Shouldn't this be "VV"? 
+        #plotID == "E_KA_F_VV_4" & speciesID == "EN" ~ ,#figuring out if this is actually VV_5_B!
         #plotID == "E_KA_F_VV_5" & speciesID == "VV" ~ ,#figuring out if this is actually VV_5_A!
         plotID == "E_SO_F_CV_2" & speciesID == "VM" ~ 22,#to count in the lab!#counted
         #plotID == "E_SO_F_CV_2" & speciesID == "CV" ~ ,#to count in the lab!
@@ -413,6 +415,8 @@ clean_df <- clean_df %>%
   )
 
 #Exceptions for individuals in the north rooted in with stem diameter out and in measured
+#in and likely in 
+# TO BE CONTINUED FOR CV 
 clean_df <- clean_df %>% #CHECK HERE
   mutate(
     full_indiv_stem_diameter = case_when(
@@ -445,7 +449,6 @@ clean_df <- clean_df %>%
       TRUE ~ NA_real_
     )
   )
-
 
 
 # 6. Reorganize columns of the dataset so that everything comes before the comment/flags columns; 
