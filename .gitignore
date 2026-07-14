@@ -14,12 +14,13 @@
 .httr-oauth
 .Rproj.user
 
-#folders ...
+#folders ... and some scripts
 *.csv
 *.xls
 *.xlsx
 *.txt
 Excel_to_csv.R
+old_Biomass_weighing_Analysis.R
 #data_descr_and_dic_making_JR.R
 #data_descr
 #data_dic
