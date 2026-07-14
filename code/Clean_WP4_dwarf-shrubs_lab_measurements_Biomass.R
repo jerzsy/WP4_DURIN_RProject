@@ -117,14 +117,58 @@ for (col in missing_cols_full_db) {
 raw_df_lab <- raw_df_lab %>%
   select(all_of(colnames(raw_df_full_db)))
 
-# Take care of E_SO_F_EN_1, EN species ID, plant_nr 2 and top_height_in_all == 21.1, change plant number to 4 temporarily
+# Take care of E_SO_F_EN_1, EN species ID, plant_nr 2: same individual.
+## Take the average of both measurements. In the lab, stem diameter in will be remeasured on main stem.
+avg_SO_F_EN_1_EN_2 <-
+  raw_df_lab %>%
+  filter(plotID == "E_SO_F_EN_1",
+         speciesID == "EN",
+         plant_nr == 2) %>%
+  summarise(
+    across(
+      top_height_in_all:stem_length_in_out,
+      ~ mean(.x, na.rm = TRUE)
+    )
+  )
+
+## Update the values in raw_df_lab and raw_df_full_db for E_SO_F_EN_1, EN species ID, plant_nr 2 with the average values calculated above
+## and remove one of the two lines
+### remove one of the two entries
 raw_df_lab <- raw_df_lab %>%
-  mutate(plant_nr = ifelse(plotID == "E_SO_F_EN_1" & speciesID == "EN" & plant_nr == 2 & top_height_in_all == 21.1, 4, plant_nr))
+  filter(!(plotID == "E_SO_F_EN_1" & speciesID == "EN" & plant_nr == 2 & top_height_in_all == 21.1))
+raw_df_full_db <- raw_df_full_db %>%
+  filter(!(plotID == "E_SO_F_EN_1" & speciesID == "EN" & plant_nr == 2 & top_height_in_all == 21.1))
+###Replace the remaining entries with the avg_SO_F_EN_1_EN_2 values in columns
+raw_df_lab <- raw_df_lab %>%
+  mutate(
+    across(
+      top_height_in_all:stem_length_in_out,
+      ~ if_else(
+        plotID == "E_SO_F_EN_1" &
+          speciesID == "EN" &
+          plant_nr == 2,
+        avg_SO_F_EN_1_EN_2[[cur_column()]],
+        .x
+      )
+    )
+  )
 
 raw_df_full_db <- raw_df_full_db %>%
-  mutate(plant_nr = ifelse(plotID == "E_SO_F_EN_1" & speciesID == "EN" & plant_nr == 2 & top_height_in_all == 21.1, 4, plant_nr))
+  mutate(
+    across(
+      top_height_in_all:stem_length_in_out,
+      ~ if_else(
+        plotID == "E_SO_F_EN_1" &
+          speciesID == "EN" &
+          plant_nr == 2,
+        avg_SO_F_EN_1_EN_2[[cur_column()]],
+        .x
+      )
+    )
+  )
 
 #Filling in missing_cols_lab in raw_df_lab with data from same columns in raw_df_full_db depending on the plotID, speciesID and plant_nr
+# Could have been done with a merge function instead, probably. 
 for (col in missing_cols_lab){
   for (i in 1:nrow(raw_df_lab)) {
     plotID_i <- raw_df_lab$plotID[i]
@@ -144,20 +188,20 @@ for (col in missing_cols_lab){
   }
 }
 
+## raw_df_lab <- raw_df_lab %>%
+##   rows_update(
+##     raw_df_full_db %>%
+##       select(plotID, speciesID, plant_nr, all_of(missing_cols_lab)),
+##     by = c("plotID", "speciesID", "plant_nr")
+##   )
+
+
+# # Change back E_SO_F_EN_1, EN species ID, plant_nr 2 and top_height_in_all == 21.1 to 2 as plant number
 # raw_df_lab <- raw_df_lab %>%
-#   rows_update(
-#     raw_df_full_db %>%
-#       select(plotID, speciesID, plant_nr, all_of(missing_cols_lab)),
-#     by = c("plotID", "speciesID", "plant_nr")
-#   )
-
-
-# Change back E_SO_F_EN_1, EN species ID, plant_nr 2 and top_height_in_all == 21.1 to 2 as plant number
-raw_df_lab <- raw_df_lab %>%
-  mutate(plant_nr = ifelse(plotID == "E_SO_F_EN_1" & speciesID == "EN" & plant_nr == 4 & top_height_in_all == 21.1, 2, plant_nr))
-
-raw_df_full_db <- raw_df_full_db %>%
-  mutate(plant_nr = ifelse(plotID == "E_SO_F_EN_1" & speciesID == "EN" & plant_nr == 4 & top_height_in_all == 21.1, 2, plant_nr))
+#   mutate(plant_nr = ifelse(plotID == "E_SO_F_EN_1" & speciesID == "EN" & plant_nr == 4 & top_height_in_all == 21.1, 2, plant_nr))
+# 
+# raw_df_full_db <- raw_df_full_db %>%
+#   mutate(plant_nr = ifelse(plotID == "E_SO_F_EN_1" & speciesID == "EN" & plant_nr == 4 & top_height_in_all == 21.1, 2, plant_nr))
 
 # Now merge both datasheets - taking Senja and Kautokeino sites only and adding them at the end of the lab database.
 ## Check for typos in siteIDs
@@ -180,7 +224,7 @@ raw_df_full_db_north <- raw_df_full_db[which(raw_df_full_db$siteID %in% c("SE", 
 raw_df_full_db_south <- raw_df_full_db[which(raw_df_full_db$siteID %in% c("LY", "SO")),]
 
 ## Put first raw_df_lab then raw_df_full_db_north
-clean_df <- bind_rows(raw_df_lab, raw_df_full_db_north)
+clean_df <- bind_rows(raw_df_lab, raw_df_full_db_north) #equivalent to merge(raw_df_lab,raw_df_full_db_north,by=colnames(raw_df_lab),all=T,sort=F)
 
 # Check the difference between the South database and the lab (online) database
 # In case when entering data in the lab, some values were changed (which most of the time should not be the case)
@@ -190,7 +234,7 @@ for (col in col_to_check){
   #compare values in two columns with a function
   a <- raw_df_full_db_south[col]
   b <- raw_df_lab_check[col]
-  if (!all(a == b, na.rm = TRUE)) {
+  if (!all(a == b, na.rm = TRUE)) {#remove NA values before comparison
     warning(paste("Values in column", col, "are different between the lab and the South database. Please check the values in this column."))
     #print the values that are different as well as the rows where they are different
     diff_rows <- which(a != b)
