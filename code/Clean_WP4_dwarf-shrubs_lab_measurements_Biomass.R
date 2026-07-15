@@ -133,6 +133,7 @@ avg_SO_F_EN_1_EN_2 <-
 
 ## Update the values in raw_df_lab and raw_df_full_db for E_SO_F_EN_1, EN species ID, plant_nr 2 with the average values calculated above
 ## and remove one of the two lines
+## Doing it now because it is needed for merging the two databases.
 ### remove one of the two entries
 raw_df_lab <- raw_df_lab %>%
   filter(!(plotID == "E_SO_F_EN_1" & speciesID == "EN" & plant_nr == 2 & top_height_in_all == 21.1))
