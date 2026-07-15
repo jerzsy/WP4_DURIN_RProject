@@ -131,7 +131,22 @@ raw_df <- raw_df %>%
     stem_length_in_out = round(stem_length_in_out, 1)
   )
 
-# 3. Add columns with flags
+# 4. Correct a few measurements with "0" as top height. I checked in the lab, they either don't have any canopy associated
+# with the measurements, or all dead leaves. Updating them to NAs.
+raw_df <- raw_df %>%
+  mutate(
+    top_height_out_all = case_when(
+      plotID == "E_SE_O_EN_4" & speciesID == "EN" & plant_nr == 3 ~ NA_real_,#no canopy
+      plotID == "E_SE_O_EN_3" & speciesID == "EN" & plant_nr == 2 ~ NA_real_,#no leaves alive
+      plotID == "E_SE_O_CV_2" & speciesID == "CV" & plant_nr == 2 ~ NA_real_,#no canopy
+      #plotID == "E_SE_O_VM_1" & speciesID == "EN" & plant_nr == 3 ~ NA_real_,#there is canopy so this is strange!
+      plotID == "E_SE_O_VV_3" & speciesID == "EN" & plant_nr == 1 ~ NA_real_,#no canopy
+      plotID == "E_SE_O_VV_3" & speciesID == "EN" & plant_nr == 2 ~ NA_real_,#no canopy
+      TRUE ~ top_height_out_all
+    )
+  )
+
+# 4. Add columns with flags
 #-------------------------------------------------------------------#
 ## flag function for automatic check on measurements! ###
 make_flags <- function(cover, top_in, top_in_flowers, top_out, top_in_out, top_in_out_flowers, stem_len_in, stem_len_out, stem_len_in_out, stem_diam_in, stem_diam_out, species) {
@@ -240,8 +255,9 @@ clean_df <- raw_df %>%
 ## Manual flags
 #E_SE_F_CV_2 CV 3 probably no canopy in - delete?
 #E_SO_F_CV_2_VM_2 look like there are two different individuals - should this be removed?
+#E_SE_O_VM_3_VV_3 out part lost in the field + E_LY_F_EN_1_EN2 
 
-# Check for North: I think they measured out all the time (or at least sometimes), even when not rooted outside. At least for some.
+## Check for North: I think they measured out all the time (or at least sometimes), even when not rooted outside. At least for some.
 # So (H/S/D= height/stem length/diameter; I/O: inside/inside+outside):
 # HI SI DI - if no mistake in the field (no missing value), this case is fine.
 # HI SI DO - this case should not exist - must be a missing value (logically SO, maybe HO in the North) - check root in/out + missing value in lab
@@ -270,7 +286,7 @@ flag_export <- clean_df %>%
 
 write.csv(flag_export, "clean_data/flag_report_bagID.csv", row.names = FALSE)
 
-#Now, add manual flags for the root in/root out. With the flag_report_bagID, I came back to the lab with Maike and we checked every bags to identify
+##Now, add manual flags for the root in/root out. With the flag_report_bagID, I came back to the lab with Maike and we checked every bags to identify
 #if it was rooted in or out. So now, I will add a flag for the one that are actually rooted in or likely in, or likely out.
 #I don't write the ones that were identified as out, as it is as it should be. See fieldsheet for more details.
 #Note, when we checked, some where already separated for leaves and stem + some other already weighed (cut, without leaves)
@@ -299,7 +315,7 @@ write.csv(flag_export, "clean_data/flag_report_bagID.csv", row.names = FALSE)
 #E_KA_F_VV_5_EN_3 root in #VV_5_A in lab #no leaves in #pic
 #E_KA_O_..._EN_1 root_out #KA_O_VM_2_EN_1 in lab
 
-#TO BE CONTINUED FOR CV
+#TO BE CONTINUED FOR CV #DONE #ALL OUT
 
 clean_df <- clean_df %>% #CHECK HERE #ROWWISE?
   rowwise() %>%
@@ -332,7 +348,7 @@ clean_df <- clean_df %>% #CHECK HERE #ROWWISE?
   )%>%
   ungroup()
 
-# 4. Adding missing number of harvested individuals based on information found on the biomass bag
+# 5. Adding missing number of harvested individuals based on information found on the biomass bag
 # For this, I checked every NA in number_harvested_indiv_without_3_rep - I replace with what I found on the bag
 # in the lab, or, if there is no "all" bag, I put 0 instead as there is no individuals harvested in addition to
 # the replicates. I also checked any 1, 2 and 3 values in number_harvested_indiv_without_3_rep as there may be a
@@ -395,7 +411,7 @@ clean_df <- clean_df %>%
   ungroup() %>%
   select(-number_replicates)
 
-# 5. Create new columns that give the stem diameter and stem length of the full individual, whether it is laying only in the plot
+# 6. Create new columns that give the stem diameter and stem length of the full individual, whether it is laying only in the plot
 # Or both in and outside of the plot.
 # This means, if there is a stem length in + out, this is the full length of the individual; otherwise it's the stem length in.
 # This means, if there is a stem diameter out, this is the full diameter of the individual; otherwise it's the stem diameter in. 
@@ -416,7 +432,7 @@ clean_df <- clean_df %>%
 
 #Exceptions for individuals in the north rooted in with stem diameter out and in measured
 #in and likely in 
-# TO BE CONTINUED FOR CV 
+# TO BE CONTINUED FOR CV #DONE ALL ROOTED OUT
 clean_df <- clean_df %>% #CHECK HERE
   mutate(
     full_indiv_stem_diameter = case_when(
@@ -450,13 +466,76 @@ clean_df <- clean_df %>%
     )
   )
 
+#7. Correct a few wrong plotID/Bag_code in the fieldsheet that I have now identified in the lab. 
+##First, remove the empty KA_O_VM_2 plotID lines from clean_df
+clean_df <- clean_df %>%
+  filter(!(plotID == "E_KA_O_VM_2")) #Remove the empty KA_O_VM_2 plotID lines from clean_df
+##Then change plotIDs
+clean_df <- clean_df %>%
+  mutate(plotID = case_when(
+    plotID == "E_KA_O_" ~ "E_KA_O_VM_2", ##KA_O_ in measurements database is likely KA_O_VM_2 in the lab. There is no VM for this one though
+    ## But no VM bags were found for KA_O_VM_2 in the lab too. There is a match in the number of VV
+    ## but not in the dates (14/07 on bags and 15/07 in the database) # There is also only 1 EN.
+    plotID == "E_KA_O_VM_3" ~ "E_KA_F_VM_3",##KA_O_VM_3 in the measurements database is likely KA_F_VM_3 in the lab (weight). It matches more or less
+    ## with the number of individuals ... No EN too. 
+    TRUE ~ plotID)
+  )
+clean_df <- clean_df %>%
+  mutate(habitat = case_when(
+    plotID == "E_KA_F_VM_3" ~ "Forested", 
+    TRUE ~ habitat)
+    )
 
-# 6. Reorganize columns of the dataset so that everything comes before the comment/flags columns; 
+##Update stem length + full_indiv_stem_length from LY_O_VV_2 and LY_O_VV_3 with values from LY_O_VV_2_A and LY_O_VV_2_B 
+##because they were measured in the lab on the A and B bags
+#Mix in Lygra: two LY_O_VV_2 bags (individual by individual because there is no way to differentiate the set of bags) 
+#.. a bit less sure about this one. We have new measurements in the lab for them, but not heights. 
+# The problem is only for VV and CV. Because there is no EN in the plots and VM is only in LY_O_VV_2
+# in the weight database, there is only VV_2_A and VV_2_B but in the measurements database, there is also VV_2 and VV_3 measurements.
+# TO BE CONTINUED FOR CV's
+# E_LY_O_VV_2_A_VV_ALL has 12+3 individuals so this may be E_LY_O_VV_3_VV_ALL that has 16 individuals in the fieldsheet
+# E_LY_O_VV_2_B_VV_ALL has 28 + 3 individuals so this should be E_LY_O_VV_2_VV_ALL that has 31 individuals in the fieldsheet
+#stem length for E_LY_O_VV_2_B_VV_2 is very short; stem length cannot be much bigger than height so this should be E_LY_O_VV_2_VV_2 
+#So E_LY_O_VV_2_A_VV_2 should be E_LY_O_VV_3_VV_2
+#stem length very short for E_LY_O_VV_2_B_VV_3 so should be VV_2.
+#So E_LY_O_VV_2_A_VV_3 should be VV_3
+#Bag_code == "E_LY_O_VV_2_A_VV_1" ~ "E_LY_O_VV_3", # Not sure about these two. 
+#Bag_code == "E_LY_O_VV_2_B_VV_1" ~ "E_LY_O_VV_2" # Not sure about these two. These ones (VV2_B_VV_1 and VV_2_VV_1) have the same height/stem length. Yet, the individual is a bit
+#twisted. Which means that the height should not be much bigger than the stem length, which is the case for VV_2_B_VV_1 versus VV_3_VV_1.
+
+clean_df <- clean_df %>%
+  mutate(stem_length_in = case_when(
+    plotID == "E_LY_O_VV_2" & speciesID == "VV" & plant_nr == 2 ~ clean_df$stem_length_in[clean_df$plotID == "E_LY_O_VV_2_B" & clean_df$speciesID == "VV" & clean_df$plant_nr == 2],
+    plotID == "E_LY_O_VV_3" & speciesID == "VV" & plant_nr == 2 ~ clean_df$stem_length_in[clean_df$plotID == "E_LY_O_VV_2_A" & clean_df$speciesID == "VV" & clean_df$plant_nr == 2],
+    plotID == "E_LY_O_VV_2" & speciesID == "VV" & plant_nr == 3 ~ clean_df$stem_length_in[clean_df$plotID == "E_LY_O_VV_2_B" & clean_df$speciesID == "VV" & clean_df$plant_nr == 3],
+    plotID == "E_LY_O_VV_3" & speciesID == "VV" & plant_nr == 3 ~ clean_df$stem_length_in[clean_df$plotID == "E_LY_O_VV_2_A" & clean_df$speciesID == "VV" & clean_df$plant_nr == 3],
+    #plotID == "E_LY_O_VV_3" & speciesID == "VV" & plant_nr == 1 ~ clean_df$stem_length_in[clean_df$plotID == "E_LY_O_VV_2_A" & clean_df$speciesID == "VV" & clean_df$plant_nr == 1]
+    #plotID == "E_LY_O_VV_2" & speciesID == "VV" & plant_nr == 1 ~ clean_df$stem_length_in[clean_df$plotID == "E_LY_O_VV_2_B" & clean_df$speciesID == "VV" & clean_df$plant_nr == 1]
+    TRUE ~ stem_length_in)
+  )
+
+clean_df <- clean_df %>%
+  mutate(full_indiv_stem_length = case_when(
+    plotID == "E_LY_O_VV_2" & speciesID == "VV" & plant_nr == 2 ~ clean_df$full_indiv_stem_length[clean_df$plotID == "E_LY_O_VV_2_B" & clean_df$speciesID == "VV" & clean_df$plant_nr == 2],
+    plotID == "E_LY_O_VV_3" & speciesID == "VV" & plant_nr == 2 ~ clean_df$full_indiv_stem_length[clean_df$plotID == "E_LY_O_VV_2_A" & clean_df$speciesID == "VV" & clean_df$plant_nr == 2],
+    plotID == "E_LY_O_VV_2" & speciesID == "VV" & plant_nr == 3 ~ clean_df$full_indiv_stem_length[clean_df$plotID == "E_LY_O_VV_2_B" & clean_df$speciesID == "VV" & clean_df$plant_nr == 3],
+    plotID == "E_LY_O_VV_3" & speciesID == "VV" & plant_nr == 3 ~ clean_df$full_indiv_stem_length[clean_df$plotID == "E_LY_O_VV_2_A" & clean_df$speciesID == "VV" & clean_df$plant_nr == 3],
+    #plotID == "E_LY_O_VV_3" & speciesID == "VV" & plant_nr == 1 ~ clean_df$full_indiv_stem_length[clean_df$plotID == "E_LY_O_VV_2_A" & clean_df$speciesID == "VV" & clean_df$plant_nr == 1]
+    #plotID == "E_LY_O_VV_2" & speciesID == "VV" & plant_nr == 1 ~ clean_df$full_indiv_stem_length[clean_df$plotID == "E_LY_O_VV_2_B" & clean_df$speciesID == "VV" & clean_df$plant_nr == 1]
+    TRUE ~ full_indiv_stem_length)
+  )
+
+## Remove E_LY_O_VV_2_B and _A (full plot to avoid duplicates even if I didn't figure out which one is which)
+clean_df <- clean_df %>%
+  filter(!(plotID == "E_LY_O_VV_2_B")) %>%
+  filter(!(plotID == "E_LY_O_VV_2_A"))
+  
+# 7. Reorganize columns of the dataset so that everything comes before the comment/flags columns; 
 # and full stem length and stem diameter columns come after stem_length_in_out
 final_df <- clean_df %>%
   select(year:stem_length_in_out, full_indiv_stem_length, full_indiv_stem_diameter, number_harvested_indiv_without_3_rep:number_harvest_indiv, Pic_numbers, comment, recorder_lab, date_lab, comment_lab, flags)
 
-# 7. Export dataset
+# 8. Export dataset
 ## Change flags column into something readable outside R.
 final_df_export_csv <- final_df
 final_df_export_csv$flags <- vapply(
@@ -467,10 +546,6 @@ final_df_export_csv$flags <- vapply(
 
 ## Export csv file
 write_csv(final_df_export_csv, "clean_data/DURIN_WP4_clean_4Corners_field_biomass_structure_cover_dwarf_shrubs_2025.csv")#_OFF_SE_KA_ONLY.csv")
-
-# TO DO
-## Replace comment column for the "lab" database column by the comment column from the original dataset. NOT the comment in the lab column. And merge for the measurements 
-#I think I'll have another script to merge both databases and that'll be my raw measurements data sheet.
 
 # Quick ggplots
 ## Cover vs top height in
