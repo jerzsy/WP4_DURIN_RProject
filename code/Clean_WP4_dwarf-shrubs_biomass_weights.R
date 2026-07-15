@@ -270,10 +270,7 @@ write_csv(clean_data,"clean_data/DURIN_WP4_clean_4Corners_lab_biomass_weight_dwa
 
 #####################################################################################
 #Analysis
-#First, sum all the column leaves
-# select all column names with _leaves_ in it and sum them
-
-# Firts, compute the ratio of leaf to stem
+# First, compute the ratio of leaf to stem
 clean_data_ratio <- clean_data %>%
   mutate(leaf_stem_ratio = biomass_leaves_total/biomass_stem_total)#biomass_alive_leaves_total / biomass_brown_stem_total) 
 
@@ -297,7 +294,7 @@ clean_data_ratio$coast_inland <- factor((clean_data_ratio$coast_inland),
 #Taking any VV that have been weighed
 biomass_vv_weighed <- clean_data_ratio %>%
   filter(SpeciesID == "VV") %>%
-  filter(weighed_status == 1) %>%
+  #filter(weighed_status == 1) %>%
   filter(IndividualID %in% c("VV_1", "VV_2", "VV_3", "VV_4"))#sometimes, there are four replicates
 
 # Define colour palette if using full name versions
