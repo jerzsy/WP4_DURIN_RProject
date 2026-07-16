@@ -195,7 +195,7 @@ make_flags <- function(cover, top_in, top_in_flowers, top_out, top_in_out, top_i
     ),
     
     #check for NA values in EN, VV, CV or VM stem length/stem diameter when part of the individual is out
-    case_when(#no stem length out while stem diameter out. If stem diameter out, there is a stem out. if height in only, missing value (SO, HO) 
+    case_when(#no stem length out while stem diameter out. If stem diameter out, there is a stem out. if height in only, can be missing value (SO, HO) 
       # with maybe a mistake on diam out (on canopy)
       # Case HI SI DO, see below.
       species %in% c("EN","VV","CV","VM") &
@@ -217,13 +217,13 @@ make_flags <- function(cover, top_in, top_in_flowers, top_out, top_in_out, top_i
         (is.na(stem_len_out) & is.na(stem_len_in_out)) ~ "missing_measured_value_out_or_MISTAKE_ON_DIAM_OUT",
       TRUE ~ NA_character_
     ),
-    case_when( # if diam out and canopy (H) out and stem out (tip to root): maybe they measured diam on canopy
-      #Case HO SO DO, see below.
-      species %in% c("EN","VV","CV","VM") &
-        !(is.na(stem_diam_out)) & !(is.na(top_out) & is.na(top_in_out) & is.na(top_in_out_flowers)) &
-        (!(is.na(stem_len_out)) | !(is.na(stem_len_in_out))) ~ "MAYBE_MISTAKE_ON_DIAM_OUT_TO_CHECK",
-      TRUE ~ NA_character_
-    ),
+    # case_when( # if diam out and canopy (H) out and stem out (tip to root): maybe they measured diam on canopy
+    #   #Case HO SO DO, see below. #CHECKED
+    #   species %in% c("EN","VV","CV","VM") &
+    #     !(is.na(stem_diam_out)) & !(is.na(top_out) & is.na(top_in_out) & is.na(top_in_out_flowers)) &
+    #     (!(is.na(stem_len_out)) | !(is.na(stem_len_in_out))) ~ "MAYBE_MISTAKE_ON_DIAM_OUT_TO_CHECK",
+    #   TRUE ~ NA_character_
+    # ),
     
     # Check for top_height values equal to 0. It is up to the data user to decide what to do with these values. May be a bit suspicious for TOP height.
     case_when(
@@ -254,8 +254,18 @@ clean_df <- raw_df %>%
 
 ## Manual flags
 #E_SE_F_CV_2 CV 3 probably no canopy in - delete?
-#E_SO_F_CV_2_VM_2 look like there are two different individuals - should this be removed?
-#E_SE_O_VM_3_VV_3 out part lost in the field + E_LY_F_EN_1_EN2 
+#E_SO_F_CV_2_VM_2 look like there are two different individuals - should this be removed? #in weight database cleaning
+#E_SE_O_VM_3_VV_3 out part lost in the field + E_LY_F_EN_1_EN2 #here and in weight database cleaning
+clean_df <- clean_df %>%
+  rowwise() %>%
+  mutate(
+    flags = case_when(
+      plotID == "E_SE_O_VM_3" & speciesID == "VV" & plant_nr == 3 ~ list(c(flags, "out_part_lost")),
+      plotID == "E_LY_F_EN_1" & speciesID == "EN" & plant_nr == 2 ~ list(c(flags, "out_part_lost")),
+      TRUE ~ list(flags)
+    )
+  )%>%
+  ungroup()
 
 ## Check for North: I think they measured out all the time (or at least sometimes), even when not rooted outside. At least for some.
 # So (H/S/D= height/stem length/diameter; I/O: inside/inside+outside):
@@ -272,19 +282,19 @@ clean_df <- raw_df %>%
 ## Export a table with bagID for flags "missing_measured_value_out_check_root"; "missing_measured_value_out"; "missing_measured_value_out_or_MISTAKE_ON_DIAM_OUT";
 # "MAYBE_MISTAKE_ON_DIAM_OUT_TO_CHECK"
 
-target_flags <- c(
-  "missing_measured_value_out_check_root",
-  "missing_measured_value_out",
-  "missing_measured_value_out_or_MISTAKE_ON_DIAM_OUT",
-  "MAYBE_MISTAKE_ON_DIAM_OUT_TO_CHECK"
-)
-
-flag_export <- clean_df %>%
-  tidyr::unnest(flags) %>%
-  dplyr::filter(flags %in% target_flags) %>%
-  dplyr::select(plotID, speciesID, plant_nr, flags)
-
-write.csv(flag_export, "clean_data/flag_report_bagID.csv", row.names = FALSE)
+# target_flags <- c(
+#   "missing_measured_value_out_check_root",
+#   "missing_measured_value_out",
+#   "missing_measured_value_out_or_MISTAKE_ON_DIAM_OUT",
+#   "MAYBE_MISTAKE_ON_DIAM_OUT_TO_CHECK"
+# )
+# 
+# flag_export <- clean_df %>%
+#   tidyr::unnest(flags) %>%
+#   dplyr::filter(flags %in% target_flags) %>%
+#   dplyr::select(plotID, speciesID, plant_nr, flags)
+# 
+# write.csv(flag_export, "clean_data/flag_report_bagID.csv", row.names = FALSE)
 
 ##Now, add manual flags for the root in/root out. With the flag_report_bagID, I came back to the lab with Maike and we checked every bags to identify
 #if it was rooted in or out. So now, I will add a flag for the one that are actually rooted in or likely in, or likely out.
@@ -525,7 +535,8 @@ clean_df <- clean_df %>%
     TRUE ~ full_indiv_stem_length)
   )
 
-## Remove E_LY_O_VV_2_B and _A (full plot to avoid duplicates even if I didn't figure out which one is which)
+## Remove E_LY_O_VV_2_B and _A (full plot to avoid duplicates in measurements 
+## even if I didn't figure out which one is which)
 clean_df <- clean_df %>%
   filter(!(plotID == "E_LY_O_VV_2_B")) %>%
   filter(!(plotID == "E_LY_O_VV_2_A"))
@@ -533,7 +544,7 @@ clean_df <- clean_df %>%
 # 7. Reorganize columns of the dataset so that everything comes before the comment/flags columns; 
 # and full stem length and stem diameter columns come after stem_length_in_out
 final_df <- clean_df %>%
-  select(year:stem_length_in_out, full_indiv_stem_length, full_indiv_stem_diameter, number_harvested_indiv_without_3_rep:number_harvest_indiv, Pic_numbers, comment, recorder_lab, date_lab, comment_lab, flags)
+  select(year:stem_length_in_out, full_indiv_top_height, full_indiv_stem_length, full_indiv_stem_diameter, number_harvested_indiv_without_3_rep:number_harvest_indiv, Pic_numbers, comment, recorder_lab, date_lab, comment_lab, flags)
 
 # 8. Export dataset
 ## Change flags column into something readable outside R.
@@ -569,3 +580,69 @@ ggplot(clean_df %>% filter(site_name == "Kautokeino" & habitat == "Open"), aes(x
   geom_histogram(binwidth = 1, position = "dodge") +
   theme_minimal() +
   labs(title = "Histogram of harvested number of individuals - Kautokeino Open", x = "Number of harvested individuals", y = "Count")
+
+#############
+#For the coding of north south and inland coastal
+clean_df_to_plot <- clean_df %>%
+  filter(speciesID == "EN" | speciesID == "CV" | speciesID == "VV" | speciesID == "VM") %>%
+  mutate(north_south = factor(siteID, levels = c("LY", "SE", "SO", "KA"),
+                              labels = c("South", "North", "South", "North"))) %>%
+  mutate(coast_inland = factor(siteID, levels = c("LY", "SE", "SO", "KA"),
+                               labels = c("Coast", "Coast", "Inland", "Inland"))) %>%
+  #remove CV's in KA site
+  filter(!(siteID == "KA" & speciesID == "CV"))
+  
+# Organize levels
+clean_df_to_plot$north_south <- factor((clean_df_to_plot$north_south),
+                                levels = c("North", "South"))
+
+clean_df_to_plot$coast_inland <- factor((clean_df_to_plot$coast_inland),
+                                 levels = c("Coast", "Inland"))
+# Define colour palette if using full name versions
+Habitat <- c("Forested" = "#083508", "Open" = "#589758")
+Species_Fruit <- c("CV" = "#DF697E",
+                   "EN" = "#404040",
+                   "VM" = "#323284",
+                   "VV" = "#D93137")
+
+#Plot full_indiv_stem_diameter for the 4 sites and habitat
+ggplot(clean_df_to_plot,
+       aes(x = habitat,
+           y = full_indiv_stem_diameter,
+           color = speciesID,
+           fill = speciesID)) +
+  
+  geom_point(
+    position = position_jitterdodge(
+      jitter.width = 0.15,
+      dodge.width = 0.6
+    ),
+    alpha = 0.4
+  ) +
+  
+  stat_summary(
+    fun = mean,
+    geom = "point",
+    size = 3,
+    position = position_dodge(width = 0.6)
+  ) +
+  
+  stat_summary(
+    fun.data = mean_se,
+    geom = "errorbar",
+    width = 0.15,
+    position = position_dodge(width = 0.6)
+  ) +
+  scale_color_manual(values = Species_Fruit) +
+  scale_fill_manual(values = Species_Fruit) +
+  facet_grid(north_south ~ coast_inland) +
+  
+  labs(
+    x = "Habitat",
+    y = "Individual Stem Diameter",
+    color = "Species",
+    fill = "Species"
+  ) +
+  
+  theme_bw()
+
