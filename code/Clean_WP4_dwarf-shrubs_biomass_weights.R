@@ -28,14 +28,15 @@ col_names <- c('recorder_sep','date_sep','time_begin_sep','time_end_sep','site_n
                'sep_status','dried_status','recorder_weighing','date_weighing','date_weighing_2','weighed_status',
                'biomass_brown_stem_in_1', 'biomass_brown_stem_in_2','biomass_brown_stem_in_3','biomass_brown_stem_in_4',
                'biomass_brown_stem_out',
-               'biomass_dust_stem_TOBECHECKED','biomass_dust_stem_in','biomass_dust_stem_out',
+               'biomass_dust_stem_in','biomass_dust_stem_out',
                'biomass_green_stem_in_1','biomass_green_stem_in_2','biomass_green_stem_in_3','biomass_green_stem_out',
-               'biomass_leaves_all_EN_CV',
+               'biomass_leaves_all_EN_CV_1','biomass_leaves_all_EN_CV_2','biomass_leaves_all_EN_CV_3','biomass_leaves_all_EN_CV_4',
                'biomass_alive_leaves_in_1','biomass_alive_leaves_in_2','biomass_alive_leaves_in_3',
                'biomass_alive_leaves_in_4','biomass_alive_leaves_in_5','biomass_alive_leaves_in_6',
                'biomass_likely_alive_leaves_in','biomass_likely_alive_top_leaves_in','biomass_maybe_alive_leaves_in',
                'biomass_alive_leaves_out','biomass_maybe_alive_leaves_out',
-               'biomass_dead_leaves_in','biomass_likely_dead_leaves_in','biomass_maybe_dead_leaves_in_1','biomass_maybe_dead_leaves_in_2',
+               'biomass_dead_leaves_in','biomass_likely_dead_leaves_in',
+               'biomass_maybe_dead_leaves_in_1','biomass_maybe_dead_leaves_in_2',
                'biomass_maybe_dead_top_leaves_in',
                'biomass_dead_leaves_out','biomass_maybe_dead_leaves_out',
                'biomass_berries_flowers_in',
@@ -78,7 +79,6 @@ col_spec <- cols(
   
   biomass_brown_stem_out = col_double(),
   
-  biomass_dust_stem_TOBECHECKED = col_double(),
   biomass_dust_stem_in = col_double(),
   biomass_dust_stem_out = col_double(),
   #update with biomass_dust_stem_in and biomass_dust_stem_out
@@ -86,8 +86,13 @@ col_spec <- cols(
   biomass_green_stem_in_1 = col_double(),
   biomass_green_stem_in_2 = col_double(),
   biomass_green_stem_in_3 = col_double(),
+  
   biomass_green_stem_out = col_double(),
-  biomass_leaves_all_EN_CV = col_double(),
+  
+  biomass_leaves_all_EN_CV_1 = col_double(),
+  biomass_leaves_all_EN_CV_2 = col_double(),
+  biomass_leaves_all_EN_CV_3 = col_double(),
+  biomass_leaves_all_EN_CV_4 = col_double(),
   
   biomass_alive_leaves_in_1 = col_double(),
   biomass_alive_leaves_in_2 = col_double(),
@@ -99,8 +104,10 @@ col_spec <- cols(
   biomass_likely_alive_leaves_in = col_double(),
   biomass_likely_alive_top_leaves_in = col_double(),
   biomass_maybe_alive_leaves_in = col_double(),
+  
   biomass_alive_leaves_out = col_double(),
   biomass_maybe_alive_leaves_out = col_double(),
+  
   biomass_dead_leaves_in = col_double(),
   biomass_likely_dead_leaves_in = col_double(),
   biomass_maybe_dead_leaves_in_1 = col_double(),
@@ -112,9 +119,12 @@ col_spec <- cols(
   
   biomass_berries_flowers_in = col_double(),
   biomass_berries_flowers_out = col_double(),
+  
   petiole = col_double(),
+  
   biomass_dust_in = col_double(),
   biomass_dust_out = col_double(),
+  
   root_in_out = col_character(),
   comment_sep = col_character(),
   comment_weighing = col_character(),
@@ -150,7 +160,13 @@ biomass_raw <- biomass_raw %>%
       select(., starts_with("biomass_green_stem_in_")),
       na.rm = TRUE)
     ),
-    
+    biomass_leaves_all_EN_CV = if_else(
+      if_all(starts_with("biomass_leaves_all_EN_CV_"),is.na),
+      NA_real_,
+      rowSums(
+        select(.,starts_with('biomass_leaves_all_EN_CV_')),
+        na.rm = TRUE)
+      ),
     biomass_alive_leaves_in = if_else(
       if_all(starts_with("biomass_alive_leaves_in_"), is.na),
       NA_real_,
@@ -170,7 +186,7 @@ biomass_raw <- biomass_raw %>%
 
 # Delete columns with individual part weights inside the bag
 biomass_raw <- biomass_raw %>%
-  select(-starts_with("biomass_brown_stem_in_"), -starts_with("biomass_green_stem_in_"), -starts_with("biomass_alive_leaves_in_"), -starts_with("biomass_maybe_dead_leaves_in_"))  
+  select(-starts_with("biomass_brown_stem_in_"), -starts_with("biomass_green_stem_in_"), -starts_with("biomass_leaves_all_EN_CV_"), -starts_with("biomass_alive_leaves_in_"), -starts_with("biomass_maybe_dead_leaves_in_"))  
 
 # Calculate the sum of in and out part (necessary for individuals weight), and add a column for that
 biomass_raw <- biomass_raw %>%
@@ -218,15 +234,20 @@ biomass_raw <- biomass_raw %>%
       is.na(biomass_dust_in) & is.na(biomass_dust_out),
       NA,
       rowSums(cbind(biomass_dust_in, biomass_dust_out), na.rm = TRUE)
-    )
-    #update with biomass_dust_stem_in and biomass_dust_stem_out
-  
+    ),
+    biomass_dust_stem_total = ifelse(
+      is.na(biomass_dust_stem_in) & is.na(biomass_dust_stem_out),
+      NA,
+      rowSums(cbind(biomass_dust_stem_in, biomass_dust_stem_out), na.rm = TRUE)
+    )#update with biomass_dust_stem_in and biomass_dust_stem_out
   )
 
 # Add a column for all the leaves (alive and dead) and all the stems (green and brown)
-cols_leaves <- c('biomass_alive_leaves_total','biomass_likely_alive_leaves_total','biomass_likely_alive_top_leaves_total',
+# Adding biomass_leaves_all_EN_CV for the total of leaves on all bag for EN and CV
+cols_leaves <- c('biomass_leaves_all_EN_CV','biomass_alive_leaves_total','biomass_likely_alive_leaves_total','biomass_likely_alive_top_leaves_total',
                 'biomass_maybe_alive_leaves_total','biomass_dead_leaves_total','biomass_likely_dead_leaves_total',
                 'biomass_maybe_dead_leaves_total','biomass_maybe_dead_top_leaves_total','petiole')
+cols_stem <- c('biomass_dust_stem_total','biomass_brown_stem_total','biomass_green_stem_total')
 biomass_raw <- biomass_raw %>%
   mutate(
     biomass_leaves_total = if_else(
@@ -235,9 +256,9 @@ biomass_raw <- biomass_raw %>%
       rowSums(across(all_of(cols_leaves)), na.rm = TRUE)
     ),
     biomass_stem_total = if_else(
-      is.na(biomass_brown_stem_total) & is.na(biomass_green_stem_total),
+      if_all(all_of(cols_stem), is.na),
       NA_real_,
-      rowSums(cbind(biomass_brown_stem_total, biomass_green_stem_total), na.rm = TRUE)
+      rowSums(across(all_of(cols_stem)), na.rm = TRUE)
     )
   )
 
@@ -255,6 +276,8 @@ biomass_raw <- biomass_raw %>%
     Bag_code == "E_KA_O_VV_5_EN_ALL" ~ "is_there_an_all_bag", #maybe only 3 replicates and that's a mistake in the fieldsheet (3 was written)
     Bag_code == "E_LY_O_CV_2_VV_3" ~ "no_bag_found",
     Bag_code == "E_SO_F_CV_2_VM_2" ~ "maybe_two_individuals",
+    Bag_code == "E_SE_O_VM_3_VV_3" ~ "out_part_lost",
+    Bag_code == "E_LY_F_EN_1_EN_2" ~ "out_part_lost"
   ))
 
 #Delete unnecessary columns
@@ -270,6 +293,8 @@ write_csv(clean_data,"clean_data/DURIN_WP4_clean_4Corners_lab_biomass_weight_dwa
 
 #####################################################################################
 #Analysis
+#Maybe should delete individual with no bag found, and out_part_lost + maybe_two_individuals as flags_weight
+
 # First, compute the ratio of leaf to stem
 clean_data_ratio <- clean_data %>%
   mutate(leaf_stem_ratio = biomass_leaves_total/biomass_stem_total)#biomass_alive_leaves_total / biomass_brown_stem_total) 
@@ -429,7 +454,7 @@ ggplot(biomass_vv_weighed,
   theme_bw()
 
 #------------------------#
-
+# Bas previous plots
 # North sites, VV species
 biomass_vv_north <- clean_data_ratio %>%
   filter(siteID == "KA" | siteID == "SE") %>%
