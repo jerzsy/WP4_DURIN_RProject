@@ -233,8 +233,14 @@ col_to_check <- setdiff(colnames(raw_df_lab),missing_cols_full_db)
 raw_df_lab_check <- raw_df_lab[which(raw_df_lab$plotID %in% raw_df_full_db_south$plotID),]  
 for (col in col_to_check){
   #compare values in two columns with a function
+  print(col)
   a <- raw_df_full_db_south[col]
   b <- raw_df_lab_check[col]
+  na_a <- length(which(is.na(a)))
+  na_b <- length(which(is.na(b)))
+  diff_na <- length(which(is.na(a!=b)))
+  print(paste("na values replaced by a new value compared to the other database: original db:",diff_na-na_a,"lab db:",diff_na-na_b))
+  #empty comments are not na in the lab databse hence the difference
   if (!all(a == b, na.rm = TRUE)) {#remove NA values before comparison
     warning(paste("Values in column", col, "are different between the lab and the South database. Please check the values in this column."))
     #print the values that are different as well as the rows where they are different
