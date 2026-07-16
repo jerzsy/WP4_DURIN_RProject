@@ -68,7 +68,7 @@ vegetation_data_stack <- bind_rows(vegetation_data_list)#, .id = "site_name")
 # 1. Data check
 ## 1.1 Check for typos
 # Make sure there is no blank space in the beginning or the end of the string in the character columns
-raw_df <- raw_df %>%
+vegetation_data_stack <- vegetation_data_stack %>%
   mutate(across(where(is.character), ~ trimws(.)))
 ### Site names
 vegetation_data_stack <- vegetation_data_stack %>%
@@ -635,5 +635,70 @@ ggplot(data=vegetation_data_stack %>% filter(speciesID==species_plot & habitat==
        x="Site", y="Height (cm)") +
   scale_fill_manual(name="Plot type", values=c("Control"="lightblue", "Removal"="salmon")) +
   theme_minimal()
+
+#############
+#For the coding of north south and inland coastal and for focal dwarf-shrubs only
+vegetation_data_plot <- vegetation_data_stack %>%
+  filter(speciesID == "EN" | speciesID == "CV" | speciesID == "VV" | speciesID == "VM") %>%
+  mutate(north_south = factor(siteID, levels = c("LY", "SE", "SO", "KA"),
+                              labels = c("South", "North", "South", "North"))) %>%
+  mutate(coast_inland = factor(siteID, levels = c("LY", "SE", "SO", "KA"),
+                               labels = c("Coast", "Coast", "Inland", "Inland")))%>%
+  #remove CV's in KA site
+  filter(!(siteID == "KA" & speciesID == "CV")) 
+
+# Organize levels
+vegetation_data_plot$north_south <- factor((vegetation_data_plot$north_south),
+                               levels = c("North", "South"))
+
+vegetation_data_plot$coast_inland <- factor((vegetation_data_plot$coast_inland),
+                                levels = c("Coast", "Inland"))
+# Define colour palette if using full name versions
+Habitat <- c("Forested" = "#083508", "Open" = "#589758")
+Species_Fruit <- c("CV" = "#DF697E",
+                   "EN" = "#404040",
+                   "VM" = "#323284",
+                   "VV" = "#D93137")
+
+#Plot control_top_height for the 4 sites and habitat
+ggplot(vegetation_data_plot,
+       aes(x = habitat,
+           y = control_top_height,
+           color = speciesID,
+           fill = speciesID)) +
+  
+  geom_point(
+    position = position_jitterdodge(
+      jitter.width = 0.15,
+      dodge.width = 0.6
+    ),
+    alpha = 0.4
+  ) +
+  
+  stat_summary(
+    fun = mean,
+    geom = "point",
+    size = 3,
+    position = position_dodge(width = 0.6)
+  ) +
+  
+  stat_summary(
+    fun.data = mean_se,
+    geom = "errorbar",
+    width = 0.15,
+    position = position_dodge(width = 0.6)
+  ) +
+  scale_color_manual(values = Species_Fruit) +
+  scale_fill_manual(values = Species_Fruit) +
+  facet_grid(north_south ~ coast_inland) +
+  
+  labs(
+    x = "Habitat",
+    y = "Individual Top Height",
+    color = "Species",
+    fill = "Species"
+  ) +
+  
+  theme_bw()
 
 
