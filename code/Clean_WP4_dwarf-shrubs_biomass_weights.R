@@ -44,7 +44,7 @@ col_names <- c('recorder_sep','date_sep','time_begin_sep','time_end_sep','site_n
                'petiole','biomass_dust_in','biomass_dust_out',
                'root_in_out',
                'comment_sep','comment_weighing','DO_NOT_EDIT_comment_after',
-               'recorder_cut_VM','date_cut_VM','time_cut_VM','status_cut_VM','comment_cut_VM','pic_VM_from_June_23')
+               'recorder_cut_VM','date_cut_VM','time_cut_VM','status_cut_VM','comment_cut_VM','pic_VM_from_June_23','check_JR_VM_Cut')
 
 ## Define column types #Update with new columns
 col_spec <- cols(
@@ -134,7 +134,8 @@ col_spec <- cols(
   time_cut_VM = col_time(format = ""),
   status_cut_VM = col_integer(),
   comment_cut_VM = col_character(),
-  pic_VM_from_June_23 = col_character()
+  pic_VM_from_June_23 = col_character(),
+  check_JR_VM_Cut = col_character()
 )
 
 # Read the file into a tibble

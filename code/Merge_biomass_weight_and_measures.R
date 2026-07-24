@@ -78,6 +78,7 @@ col_spec_weight <- cols(
   status_cut_VM = col_integer(),
   comment_cut_VM = col_character(),
   pic_VM_from_June_23 = col_character(),
+  check_JR_VM_Cut = col_character(),
   
   biomass_brown_stem_in = col_double(),
   biomass_green_stem_in = col_double(),
